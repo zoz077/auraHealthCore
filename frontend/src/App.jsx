@@ -8,10 +8,14 @@ import RespiratoryDashboard from './components/RespiratoryDashboard';
 import NotificationToast from './components/NotificationToast';
 import NeurologyDashboard from './components/NeurologyDashboard';
 
+// Ensure all Axios requests send and receive HttpOnly session cookies
+axios.defaults.withCredentials = true;
+
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authMode, setAuthMode] = useState('login');
   const [activeTab, setActiveTab] = useState('booking');
 
@@ -43,6 +47,7 @@ export default function App() {
   const [adminMsg, setAdminMsg] = useState('');
 
   const [notifications, setNotifications] = useState([]);
+  const [activeToasts, setActiveToasts] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [selectedPrintRecord, setSelectedPrintRecord] = useState(null);
 
@@ -56,7 +61,92 @@ export default function App() {
       read: false 
     };
     setNotifications(prev => [newNotif, ...prev]);
+    setActiveToasts(prev => [newNotif, ...prev]);
+    setTimeout(() => {
+      setActiveToasts(prev => prev.filter(t => t.id !== newNotif.id));
+    }, 5000);
   };
+
+  const handleCloseToast = (id) => {
+    setActiveToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  // Restore session via /api/auth/me on component mount
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/api/auth/me`)
+      .then(res => {
+        const user = res.data.user || res.data;
+        setCurrentUser(user);
+        if (user.role === 'admin') setActiveTab('admin');
+        else if (user.role === 'doctor') setActiveTab('queue');
+        else setActiveTab('booking');
+      })
+      .catch(() => {
+        setCurrentUser(null);
+      })
+      .finally(() => {
+        setIsCheckingAuth(false);
+      });
+  }, []);
+
+  // Fetch notifications and establish authenticated WebSocket when logged in
+  useEffect(() => {
+    if (!currentUser) {
+      setNotifications([]);
+      setActiveToasts([]);
+      return;
+    }
+
+    // Fetch persisted notifications
+    axios.get(`${API_BASE_URL}/api/notifications`)
+      .then(res => {
+        const loaded = res.data.map(n => ({
+          id: n.id,
+          targetUserId: currentUser.id,
+          text: n.message || n.title,
+          type: (n.priority === 'CRITICAL' || n.priority === 'HIGH') ? 'error' : 'info',
+          time: n.created_at || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          read: n.is_read
+        }));
+        setNotifications(loaded);
+      })
+      .catch(err => console.error("Could not fetch notifications:", err));
+
+    // Connect to WebSocket using HttpOnly cookie automatically sent during handshake
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = API_BASE_URL.replace(/^https?:\/\//, '');
+    const wsUrl = `${wsProtocol}//${wsHost}/ws/notifications`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const incoming = {
+          id: data.id || Date.now() + Math.random(),
+          targetUserId: currentUser.id,
+          text: data.message || data.title || data.text,
+          type: data.type || ((data.priority === 'CRITICAL' || data.priority === 'HIGH') ? 'error' : 'info'),
+          time: data.created_at || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          read: false
+        };
+        setNotifications(prev => [incoming, ...prev]);
+        setActiveToasts(prev => [incoming, ...prev]);
+        setTimeout(() => {
+          setActiveToasts(prev => prev.filter(t => t.id !== incoming.id));
+        }, 6000);
+      } catch (err) {
+        console.error("Failed to parse websocket message:", err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.warn("WebSocket notification error:", err);
+    };
+
+    return () => {
+      ws.close();
+    };
+  }, [currentUser]);
 
   useEffect(() => {
     if (currentUser) {
@@ -177,12 +267,45 @@ export default function App() {
     }, 300);
   };
 
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/auth/logout`);
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+    setCurrentUser(null);
+    setActiveTab('booking');
+  };
+
+  const handleMarkAllRead = async () => {
+    const unread = notifications.filter(n => !n.read && n.id);
+    for (const n of unread) {
+      try {
+        await axios.put(`${API_BASE_URL}/api/notifications/${n.id}/read`);
+      } catch (e) {
+        // ignore
+      }
+    }
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
   const userNotifications = notifications.filter(n => n.targetUserId === currentUser?.id);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-[#090d16] text-slate-100 flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <Activity className="w-8 h-8 text-cyan-400 animate-spin" />
+          <p className="text-xs text-slate-400 font-medium">Verifying session...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-[#090d16] text-slate-100 flex items-center justify-center p-4">
-        <NotificationToast />
+        <NotificationToast notifications={activeToasts} onClose={handleCloseToast} />
         <div className="w-full max-w-md bg-[#111827] border border-slate-800 rounded-2xl p-8 shadow-2xl">
           <div className="flex items-center gap-3 justify-center mb-6">
             <Activity className="w-8 h-8 text-cyan-400 animate-pulse" />
@@ -223,7 +346,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-100 font-sans">
-      <NotificationToast />
+      <NotificationToast notifications={activeToasts} onClose={handleCloseToast} />
       <nav className="bg-[#111827] border-b border-slate-800 px-6 py-4 flex justify-between items-center print:hidden">
         <div className="flex items-center gap-3">
           <Activity className="w-6 h-6 text-cyan-400" />
@@ -287,7 +410,7 @@ export default function App() {
               <div className="absolute right-0 mt-2 w-80 bg-[#111827] border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3">
                 <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                   <span className="text-xs font-bold text-slate-200">My Notifications</span>
-                  <span className="text-[10px] text-cyan-400 cursor-pointer" onClick={() => setNotifications(notifications.map(n => n.targetUserId === currentUser.id ? {...n, read: true} : n))}>Mark read</span>
+                  <span className="text-[10px] text-cyan-400 cursor-pointer" onClick={handleMarkAllRead}>Mark read</span>
                 </div>
                 <div className="max-h-60 overflow-y-auto space-y-2">
                   {userNotifications.length === 0 && <p className="text-xs text-slate-500 text-center py-4">No notifications for you.</p>}
@@ -309,7 +432,7 @@ export default function App() {
             <div className="text-xs font-semibold">{currentUser.full_name}</div>
             <div className="text-[10px] uppercase font-mono text-cyan-400">{currentUser.role}</div>
           </div>
-          <button onClick={() => setCurrentUser(null)} className="p-2 bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 rounded-xl text-slate-400 transition-all">
+          <button onClick={handleLogout} title="Sign Out" className="p-2 bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 rounded-xl text-slate-400 transition-all">
             <LogOut className="w-4 h-4" />
           </button>
         </div>
