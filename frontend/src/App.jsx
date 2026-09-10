@@ -446,11 +446,11 @@ export default function App() {
   // Render Loading Splash while checking session
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-[#090d16] flex flex-col items-center justify-center text-slate-200">
-        <div className="w-12 h-12 rounded-2xl bg-cyan-600/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-4 animate-pulse">
-          <HeartPulse className="w-6 h-6 animate-spin" />
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col items-center justify-center text-slate-800">
+        <div className="w-14 h-14 rounded-2xl bg-white border border-slate-100 flex items-center justify-center text-cyan-600 mb-4 shadow-[4px_4px_12px_#e2e8f0,-4px_-4px_12px_#ffffff] animate-pulse">
+          <HeartPulse className="w-7 h-7 animate-spin" />
         </div>
-        <h1 className="text-base font-semibold text-slate-100">AuraHealth Core</h1>
+        <h1 className="text-lg font-bold text-slate-900">AuraHealth Core</h1>
         <p className="text-xs text-slate-500 mt-1 font-mono">Restoring Secure Clinical Session...</p>
       </div>
     );
@@ -459,30 +459,30 @@ export default function App() {
   // Render Login / Registration Screen
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#090d16] flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
-        {/* Background glow accents */}
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-rose-600/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
+        {/* Ambient background glows */}
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-cyan-200/40 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-200/30 rounded-full blur-3xl pointer-events-none" />
 
         <div className="w-full max-w-md relative z-10 space-y-6">
           {/* Brand Header */}
           <div className="text-center space-y-2">
-            <div className="inline-flex p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 mb-2 shadow-sm shadow-cyan-950/40">
+            <div className="inline-flex p-3 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 text-white mb-2 shadow-md shadow-cyan-900/10">
               <HeartPulse className="w-7 h-7" />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-100">AuraHealth Core</h1>
-            <p className="text-xs text-slate-400">Clinical Artificial Intelligence & Hospital Operations Engine</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">AuraHealth Core</h1>
+            <p className="text-xs text-slate-500">Clinical Artificial Intelligence & Hospital Operations Platform</p>
           </div>
 
-          <Card>
+          <Card className="bg-white/90 backdrop-blur-xl border border-white shadow-glass-lg rounded-3xl">
             <CardHeader className="text-center pb-2">
-              <div className="w-full flex items-center justify-center gap-2">
+              <div className="w-full flex items-center justify-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200/80">
                 <button
                   onClick={() => { setAuthMode('login'); setAuthError(''); }}
                   className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
                     authMode === 'login'
-                      ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white text-cyan-950 shadow-sm font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   Clinical Staff & Patient Login
@@ -491,8 +491,8 @@ export default function App() {
                   onClick={() => { setAuthMode('register'); setAuthError(''); }}
                   className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
                     authMode === 'register'
-                      ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white text-cyan-950 shadow-sm font-bold'
+                      : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   New Patient Registration
@@ -551,15 +551,30 @@ export default function App() {
                 </Button>
               </form>
 
-              {/* Quick credential hints */}
-              <div className="mt-5 pt-4 border-t border-slate-800/80 space-y-2 text-[11px] text-slate-400">
-                <div className="flex items-center gap-1.5 font-medium text-slate-300">
-                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Security & Access Governance</span>
+              {/* Neutral Trust & Security Indicators */}
+              <div className="mt-6 pt-5 border-t border-slate-100 space-y-3">
+                <div className="flex items-center gap-1.5 font-semibold text-slate-700 text-xs">
+                  <ShieldCheck className="w-4 h-4 text-teal-600" />
+                  <span>Clinical Security & Access Controls</span>
                 </div>
-                <p className="text-slate-500 leading-relaxed">
-                  Session protected by HttpOnly SameSite=Lax JWT token cookies and PBKDF2/Bcrypt salted hashes.
-                </p>
+                <div className="grid grid-cols-2 gap-2 text-[10px] text-slate-600">
+                  <div className="p-2 rounded-xl bg-slate-50/80 border border-slate-100 flex items-center gap-1.5 font-medium">
+                    <Check className="w-3 h-3 text-teal-600 shrink-0" />
+                    <span>Secure Session</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50/80 border border-slate-100 flex items-center gap-1.5 font-medium">
+                    <Check className="w-3 h-3 text-teal-600 shrink-0" />
+                    <span>Protected Clinical Data</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50/80 border border-slate-100 flex items-center gap-1.5 font-medium">
+                    <Check className="w-3 h-3 text-teal-600 shrink-0" />
+                    <span>Role-Based Access</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-slate-50/80 border border-slate-100 flex items-center gap-1.5 font-medium">
+                    <Check className="w-3 h-3 text-teal-600 shrink-0" />
+                    <span>Privacy Controls</span>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -570,27 +585,27 @@ export default function App() {
 
   // Main Authenticated Portal
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
       <NotificationToast notifications={activeToasts} onClose={handleCloseToast} />
 
       {/* Top Clinical Header Bar */}
-      <header className="bg-[#0f172a]/95 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md">
+      <header className="bg-white/85 border-b border-slate-200/80 sticky top-0 z-40 backdrop-blur-xl shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          {/* Brand & Environment Tag */}
+          {/* Brand & Telemetry Status Beacon */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-600/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-sm shadow-cyan-950/40">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 flex items-center justify-center text-white shadow-sm">
               <HeartPulse className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-slate-100 text-sm tracking-tight">AuraHealth Core</span>
-                <span className="hidden sm:inline-flex text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.2 rounded-md">
-                  v2.4 Live
+                <span className="font-bold text-slate-900 text-sm tracking-tight">AuraHealth Core</span>
+                <span className="hidden sm:inline-flex text-[10px] font-semibold text-cyan-700 bg-cyan-50 border border-cyan-200/80 px-2 py-0.5 rounded-full">
+                  Clinical AI Engine
                 </span>
               </div>
-              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="font-mono text-[10px] text-slate-500">Telemetry Stream Active</span>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] text-slate-500 font-medium">Clinical AI Online</span>
               </div>
             </div>
           </div>
@@ -599,11 +614,11 @@ export default function App() {
           <div className="flex items-center gap-3">
             {/* Emergency SOS Button */}
             <Button
-              variant="danger"
+              variant="dangerOutline"
               size="sm"
               icon={AlertTriangle}
               onClick={() => setShowEmergencyModal(true)}
-              className="shadow-md shadow-rose-950/40 animate-pulse"
+              className="border-rose-300 text-rose-700 bg-rose-50/90 hover:bg-rose-100 shadow-sm"
               title="Dispatch Acute Emergency Telemetry Alert"
             >
               <span className="hidden sm:inline">Emergency</span> SOS
@@ -614,13 +629,13 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowNotifs(!showNotifs)}
-                className="p-2.5 bg-slate-800 hover:bg-slate-700/80 rounded-xl relative text-slate-300 border border-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                className="p-2.5 bg-[#f0f4f8] hover:bg-[#e8eff6] rounded-xl relative text-slate-600 hover:text-slate-900 border border-white/80 shadow-[2px_2px_6px_#e2e8f0,-2px_-2px_6px_#ffffff] transition-all focus:outline-none"
                 title="View In-App Notifications"
                 aria-label="Notifications"
               >
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-bounce-once">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-600 text-white rounded-full text-[10px] font-bold flex items-center justify-center shadow-sm">
                     {unreadCount}
                   </span>
                 )}
@@ -628,16 +643,16 @@ export default function App() {
 
               {/* Notification Tray Dropdown */}
               {showNotifs && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3 animate-in fade-in-0 zoom-in-95">
-                  <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white/95 backdrop-blur-xl border border-slate-200/90 rounded-2xl shadow-glass-lg p-4 z-50 space-y-3 animate-in fade-in-0 zoom-in-95">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-2.5">
                     <div className="flex items-center gap-2">
-                      <Bell className="w-4 h-4 text-cyan-400" />
-                      <span className="text-xs font-bold text-slate-100">Telemetry Notifications</span>
+                      <Bell className="w-4 h-4 text-cyan-600" />
+                      <span className="text-xs font-bold text-slate-800">Telemetry Notifications</span>
                     </div>
                     {unreadCount > 0 && (
                       <button
                         onClick={handleMarkAllRead}
-                        className="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium"
+                        className="text-[10px] text-cyan-700 hover:text-cyan-800 font-semibold"
                       >
                         Mark all read
                       </button>
@@ -646,20 +661,20 @@ export default function App() {
 
                   <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
                     {userNotifications.length === 0 ? (
-                      <div className="text-xs text-slate-500 text-center py-6">No recent notifications.</div>
+                      <div className="text-xs text-slate-400 text-center py-6">No recent notifications.</div>
                     ) : (
                       userNotifications.map(n => (
                         <div
                           key={n.id}
                           className={`text-xs p-3 rounded-xl border transition-colors space-y-1 ${
                             n.read
-                              ? 'bg-[#0b0f19] border-slate-800/80 text-slate-400'
-                              : 'bg-cyan-950/20 border-cyan-500/30 text-slate-200'
+                              ? 'bg-slate-50/70 border-slate-100 text-slate-600'
+                              : 'bg-cyan-50/70 border-cyan-200/80 text-cyan-950 font-medium'
                           }`}
                         >
-                          <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono">
+                          <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono">
                             <span>{n.time}</span>
-                            <span className={n.type === 'error' ? 'text-rose-400' : 'text-cyan-400'}>
+                            <span className={n.type === 'error' ? 'text-rose-600 font-semibold' : 'text-cyan-700 font-semibold'}>
                               {n.type === 'error' ? 'Urgent Alert' : 'Direct Notice'}
                             </span>
                           </div>
@@ -674,7 +689,7 @@ export default function App() {
 
             {/* User Info & Identity Badge */}
             <div className="hidden md:flex flex-col text-right">
-              <span className="text-xs font-semibold text-slate-200 leading-tight">{currentUser.full_name}</span>
+              <span className="text-xs font-semibold text-slate-800 leading-tight">{currentUser.full_name}</span>
               <div className="flex items-center gap-1 justify-end mt-0.5">
                 <Badge
                   variant={
@@ -692,7 +707,7 @@ export default function App() {
             <button
               onClick={handleLogout}
               title="Sign Out of Portal"
-              className="p-2.5 bg-slate-800 hover:bg-rose-500/15 hover:text-rose-400 rounded-xl text-slate-400 border border-slate-700 transition-all focus:outline-none"
+              className="p-2.5 bg-[#f0f4f8] hover:bg-rose-50 hover:text-rose-600 rounded-xl text-slate-500 border border-white/80 shadow-[2px_2px_6px_#e2e8f0,-2px_-2px_6px_#ffffff] transition-all focus:outline-none"
               aria-label="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -701,18 +716,20 @@ export default function App() {
         </div>
 
         {/* Secondary Workspace Sub-Navigation Tabs */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1.5 overflow-x-auto py-2.5 scrollbar-none border-t border-slate-800/60">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1.5 overflow-x-auto py-2 scrollbar-none border-t border-slate-100">
           {currentUser.role === 'patient' && (
             <>
               <button
                 onClick={() => setActiveTab('booking')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
-                  activeTab === 'booking' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  activeTab === 'booking'
+                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" /> Appointments
                 {patientAppointments.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px] font-mono">
+                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-100 text-cyan-800 text-[10px] font-mono font-semibold">
                     {patientAppointments.length}
                   </span>
                 )}
@@ -720,7 +737,9 @@ export default function App() {
               <button
                 onClick={() => setActiveTab('profile')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
-                  activeTab === 'profile' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  activeTab === 'profile'
+                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 <User className="w-3.5 h-3.5" /> My Profile
@@ -728,17 +747,19 @@ export default function App() {
               <button
                 onClick={() => setActiveTab('records')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
-                  activeTab === 'records' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  activeTab === 'records'
+                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" /> Medical Records
                 {medicalRecords.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[10px] font-mono">
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-semibold">
                     {medicalRecords.length}
                   </span>
                 )}
               </button>
-              <div className="h-4 w-px bg-slate-800 mx-1" />
+              <div className="h-4 w-px bg-slate-200 mx-1" />
             </>
           )}
 
@@ -747,12 +768,14 @@ export default function App() {
               <button
                 onClick={() => setActiveTab('queue')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
-                  activeTab === 'queue' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  activeTab === 'queue'
+                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 <Stethoscope className="w-3.5 h-3.5" /> Clinic Queue
                 {doctorQueue.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px] font-mono">
+                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-100 text-cyan-800 text-[10px] font-mono font-semibold">
                     {doctorQueue.length}
                   </span>
                 )}
@@ -760,17 +783,19 @@ export default function App() {
               <button
                 onClick={() => setActiveTab('emergencies')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
-                  activeTab === 'emergencies' ? 'bg-rose-600 text-white shadow-sm shadow-rose-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  activeTab === 'emergencies'
+                    ? 'bg-white text-rose-700 shadow-sm border border-rose-200/90'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 <AlertTriangle className="w-3.5 h-3.5" /> Acute Triage Feed
                 {emergencyRecords.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500/20 text-[10px] font-mono">
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[10px] font-mono font-semibold">
                     {emergencyRecords.length}
                   </span>
                 )}
               </button>
-              <div className="h-4 w-px bg-slate-800 mx-1" />
+              <div className="h-4 w-px bg-slate-200 mx-1" />
             </>
           )}
 
@@ -779,7 +804,9 @@ export default function App() {
               <button
                 onClick={() => setActiveTab('admin')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
-                  activeTab === 'admin' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  activeTab === 'admin'
+                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 <ShieldCheck className="w-3.5 h-3.5" /> Hospital Operations
@@ -787,12 +814,14 @@ export default function App() {
               <button
                 onClick={() => setActiveTab('emergencies')}
                 className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
-                  activeTab === 'emergencies' ? 'bg-rose-600 text-white shadow-sm shadow-rose-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  activeTab === 'emergencies'
+                    ? 'bg-white text-rose-700 shadow-sm border border-rose-200/90'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 <AlertTriangle className="w-3.5 h-3.5" /> Emergency Triage Feed
               </button>
-              <div className="h-4 w-px bg-slate-800 mx-1" />
+              <div className="h-4 w-px bg-slate-200 mx-1" />
             </>
           )}
 
@@ -800,42 +829,52 @@ export default function App() {
           <button
             onClick={() => setActiveTab('neurology')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
-              activeTab === 'neurology' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              activeTab === 'neurology'
+                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <Brain className="w-3.5 h-3.5" /> Neurology AI
+            <Brain className="w-3.5 h-3.5 text-cyan-600" /> Neurology AI
           </button>
           <button
             onClick={() => setActiveTab('ecg')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
-              activeTab === 'ecg' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              activeTab === 'ecg'
+                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <Heart className="w-3.5 h-3.5" /> ECG Rhythm
+            <Heart className="w-3.5 h-3.5 text-rose-500" /> ECG Rhythm
           </button>
           <button
             onClick={() => setActiveTab('icu')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
-              activeTab === 'icu' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              activeTab === 'icu'
+                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <HeartPulse className="w-3.5 h-3.5" /> ICU Risk AI
+            <HeartPulse className="w-3.5 h-3.5 text-teal-600" /> ICU Risk AI
           </button>
           <button
             onClick={() => setActiveTab('imaging')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
-              activeTab === 'imaging' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              activeTab === 'imaging'
+                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" /> Radiology AI
+            <Layers className="w-3.5 h-3.5 text-cyan-600" /> Radiology AI
           </button>
           <button
             onClick={() => setActiveTab('respiratory')}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
-              activeTab === 'respiratory' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              activeTab === 'respiratory'
+                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <Wind className="w-3.5 h-3.5" /> Respiratory AI
+            <Wind className="w-3.5 h-3.5 text-teal-600" /> Respiratory AI
           </button>
         </div>
       </header>
@@ -873,12 +912,12 @@ export default function App() {
                     {medicalRecords.map((rec) => (
                       <div
                         key={rec.id}
-                        className="bg-[#0b0f19] p-4 sm:p-5 rounded-2xl border border-slate-800/80 space-y-3 transition-all hover:border-slate-700"
+                        className="bg-white/90 p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3 transition-all hover:shadow-md"
                       >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                           <div>
-                            <span className="text-xs font-bold text-cyan-400">{rec.record_type}</span>
-                            <div className="text-[11px] text-slate-500 font-mono mt-0.5">{rec.created_at}</div>
+                            <span className="text-xs font-bold text-cyan-900">{rec.record_type}</span>
+                            <div className="text-[11px] text-slate-400 font-mono mt-0.5">{rec.created_at}</div>
                           </div>
                           <div className="flex items-center gap-3">
                             <Badge
@@ -906,7 +945,7 @@ export default function App() {
                           {rec.details && rec.details.map((d, idx) => (
                             <div
                               key={idx}
-                              className="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/60 leading-relaxed"
+                              className="text-xs text-slate-700 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 leading-relaxed"
                             >
                               {d}
                             </div>
@@ -1015,10 +1054,10 @@ export default function App() {
                         onClick={() => setBookingTime(slot.time)}
                         className={`text-[11px] py-2 rounded-xl border font-mono transition-all duration-150 ${
                           !slot.available
-                            ? 'bg-slate-900 border-slate-800 text-slate-600 line-through cursor-not-allowed opacity-50'
+                            ? 'bg-slate-100 border-slate-200 text-slate-400 line-through cursor-not-allowed opacity-50'
                             : bookingTime === slot.time
-                            ? 'bg-cyan-600 border-cyan-500 text-white shadow-sm shadow-cyan-950/40 font-semibold'
-                            : 'bg-[#0b0f19] border-slate-800 text-slate-300 hover:border-slate-700'
+                            ? 'bg-gradient-to-r from-teal-600 to-cyan-600 border-transparent text-white shadow-sm font-semibold'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-cyan-400 hover:bg-cyan-50/20'
                         }`}
                       >
                         {slot.time}
@@ -1060,21 +1099,21 @@ export default function App() {
                     {patientAppointments.map(item => (
                       <div
                         key={item.id}
-                        className="bg-[#0b0f19] p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        className="bg-white/90 p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-cyan-400">{item.department} Clinic</span>
-                            <span className="text-[10px] text-slate-500 font-mono">Ticket #{item.id}</span>
+                            <span className="text-xs font-bold text-cyan-900">{item.department} Clinic</span>
+                            <span className="text-[10px] text-slate-400 font-mono">Ticket #{item.id}</span>
                           </div>
-                          <div className="text-xs text-slate-300 mt-1">
-                            Dr. {item.doctor_name} • <span className="font-mono text-slate-400">{item.appointment_date} ({item.appointment_time})</span>
+                          <div className="text-xs text-slate-600 mt-1">
+                            Dr. {item.doctor_name} • <span className="font-mono text-slate-500">{item.appointment_date} ({item.appointment_time})</span>
                           </div>
                         </div>
 
                         <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-800 border border-cyan-200">
                               Queue #{item.queue_number}
                             </span>
                             <Badge
@@ -1117,11 +1156,11 @@ export default function App() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-cyan-600/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg shadow-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
                     {currentUser.full_name?.charAt(0) || 'P'}
                   </div>
                   <div>
-                    <h2 className="text-base font-bold text-slate-100">{currentUser.full_name}</h2>
+                    <h2 className="text-base font-bold text-slate-800">{currentUser.full_name}</h2>
                     <p className="text-xs text-slate-400 font-mono">Patient Portal Identifier: PAT-{currentUser.id.toString().padStart(4, '0')}</p>
                   </div>
                 </div>
@@ -1129,21 +1168,21 @@ export default function App() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-500 block font-mono text-[10px] uppercase">Registered Official Email</span>
-                    <span className="text-slate-200 font-medium">{currentUser.email}</span>
+                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                    <span className="text-slate-400 block font-mono text-[10px] uppercase">Registered Official Email</span>
+                    <span className="text-slate-800 font-medium">{currentUser.email}</span>
                   </div>
-                  <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-500 block font-mono text-[10px] uppercase">Assigned Security Role</span>
-                    <span className="text-cyan-400 font-semibold uppercase">{currentUser.role}</span>
+                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                    <span className="text-slate-400 block font-mono text-[10px] uppercase">Assigned Security Role</span>
+                    <span className="text-cyan-800 font-semibold uppercase">{currentUser.role}</span>
                   </div>
-                  <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-500 block font-mono text-[10px] uppercase">Assigned Clinic / Care Focus</span>
-                    <span className="text-slate-200">{currentUser.department || 'General Care'}</span>
+                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                    <span className="text-slate-400 block font-mono text-[10px] uppercase">Assigned Clinic / Care Focus</span>
+                    <span className="text-slate-800 font-medium">{currentUser.department || 'General Care'}</span>
                   </div>
-                  <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
-                    <span className="text-slate-500 block font-mono text-[10px] uppercase">Session Security State</span>
-                    <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                    <span className="text-slate-400 block font-mono text-[10px] uppercase">Session Security State</span>
+                    <span className="text-emerald-700 font-semibold flex items-center gap-1.5">
                       <Check className="w-3.5 h-3.5" /> HttpOnly Authenticated
                     </span>
                   </div>
@@ -1161,22 +1200,22 @@ export default function App() {
               <Card hover onClick={() => setActiveTab('booking')} className="cursor-pointer">
                 <CardContent className="flex items-center justify-between p-5">
                   <div className="space-y-1">
-                    <span className="text-xs font-semibold text-slate-400 block">Active Clinic Tickets</span>
-                    <div className="text-2xl font-bold font-mono text-cyan-400">{patientAppointments.length}</div>
-                    <p className="text-[11px] text-slate-500">Upcoming clinical consults</p>
+                    <span className="text-xs font-semibold text-slate-500 block">Active Clinic Tickets</span>
+                    <div className="text-2xl font-bold font-mono text-cyan-800">{patientAppointments.length}</div>
+                    <p className="text-[11px] text-slate-400">Upcoming clinical consults</p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-slate-600" />
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
                 </CardContent>
               </Card>
 
               <Card hover onClick={() => setActiveTab('records')} className="cursor-pointer">
                 <CardContent className="flex items-center justify-between p-5">
                   <div className="space-y-1">
-                    <span className="text-xs font-semibold text-slate-400 block">Stored EHR Diagnostic Records</span>
-                    <div className="text-2xl font-bold font-mono text-emerald-400">{medicalRecords.length}</div>
-                    <p className="text-[11px] text-slate-500">Saved AI assessments</p>
+                    <span className="text-xs font-semibold text-slate-500 block">Stored EHR Diagnostic Records</span>
+                    <div className="text-2xl font-bold font-mono text-emerald-700">{medicalRecords.length}</div>
+                    <p className="text-[11px] text-slate-400">Saved AI assessments</p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-slate-600" />
+                  <ChevronRight className="w-5 h-5 text-slate-400" />
                 </CardContent>
               </Card>
             </div>
@@ -1190,7 +1229,7 @@ export default function App() {
               <div>
                 <CardTitle icon={Stethoscope}>Patient Queue Management</CardTitle>
                 <CardDescription>
-                  Active Department: <span className="text-cyan-400 font-semibold">{currentUser.department || 'General Clinic'}</span>
+                  Active Department: <span className="text-cyan-800 font-semibold">{currentUser.department || 'General Clinic'}</span>
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -1211,15 +1250,15 @@ export default function App() {
                   {doctorQueue.map(item => (
                     <div
                       key={item.id}
-                      className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-slate-700"
+                      className="p-4 rounded-2xl bg-white/90 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:shadow-md"
                     >
                       <div className="flex items-center gap-4">
-                        <span className="text-xl font-mono font-bold text-cyan-400 bg-cyan-500/10 px-3.5 py-2 rounded-xl border border-cyan-500/20">
+                        <span className="text-xl font-mono font-bold text-cyan-800 bg-cyan-50 px-3.5 py-2 rounded-xl border border-cyan-200">
                           #{item.queue_number}
                         </span>
                         <div>
-                          <div className="text-sm font-bold text-slate-100">{item.patient_name}</div>
-                          <div className="text-xs text-slate-400 font-mono mt-0.5">
+                          <div className="text-sm font-bold text-slate-800">{item.patient_name}</div>
+                          <div className="text-xs text-slate-500 font-mono mt-0.5">
                             Scheduled: {item.appointment_time} • {item.appointment_date}
                           </div>
                         </div>
@@ -1328,18 +1367,18 @@ export default function App() {
                   {emergencyRecords.map(em => (
                     <div
                       key={em.id}
-                      className="bg-[#0b0f19] p-5 rounded-2xl border border-rose-500/20 space-y-3.5 shadow-sm shadow-rose-950/20"
+                      className="bg-white/90 p-5 rounded-2xl border border-rose-200/80 shadow-sm space-y-3.5"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                         <div className="flex items-center gap-2.5">
-                          <span className="font-bold text-slate-100 text-sm">{em.patient_name}</span>
+                          <span className="font-bold text-slate-900 text-sm">{em.patient_name}</span>
                           <Badge variant="danger" size="sm">
                             EHR #{em.id}
                           </Badge>
-                          <span className="text-xs text-slate-400">• {em.diagnosis || 'Acute Distress'}</span>
+                          <span className="text-xs text-slate-500">• {em.diagnosis || 'Acute Distress'}</span>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="text-[11px] font-mono text-slate-500">{em.created_at}</span>
+                          <span className="text-[11px] font-mono text-slate-400">{em.created_at}</span>
                           {currentUser.role !== 'patient' && em.patient_id && (
                             <div className="flex items-center gap-2">
                               <Button
@@ -1371,28 +1410,28 @@ export default function App() {
                       </div>
 
                       {/* Vital Signs Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-50/80 p-3.5 rounded-xl border border-slate-100">
                         <div>
-                          <span className="text-slate-500 text-[10px] uppercase font-mono block">Heart Rate</span>
-                          <span className="font-mono text-rose-400 font-bold text-sm">{em.heart_rate} bpm</span>
+                          <span className="text-slate-400 text-[10px] uppercase font-mono block font-medium">Heart Rate</span>
+                          <span className="font-mono text-rose-600 font-bold text-sm">{em.heart_rate} bpm</span>
                         </div>
                         <div>
-                          <span className="text-slate-500 text-[10px] uppercase font-mono block">Oxygen SpO2</span>
-                          <span className="font-mono text-cyan-400 font-bold text-sm">{em.spo2}%</span>
+                          <span className="text-slate-400 text-[10px] uppercase font-mono block font-medium">Oxygen SpO2</span>
+                          <span className="font-mono text-cyan-700 font-bold text-sm">{em.spo2}%</span>
                         </div>
                         <div>
-                          <span className="text-slate-500 text-[10px] uppercase font-mono block">Blood Pressure</span>
-                          <span className="font-mono text-slate-200 font-bold text-sm">{em.blood_pressure}</span>
+                          <span className="text-slate-400 text-[10px] uppercase font-mono block font-medium">Blood Pressure</span>
+                          <span className="font-mono text-slate-800 font-bold text-sm">{em.blood_pressure}</span>
                         </div>
                         <div>
-                          <span className="text-slate-500 text-[10px] uppercase font-mono block">Temperature</span>
-                          <span className="font-mono text-amber-400 font-bold text-sm">{em.temperature}°C</span>
+                          <span className="text-slate-400 text-[10px] uppercase font-mono block font-medium">Temperature</span>
+                          <span className="font-mono text-amber-700 font-bold text-sm">{em.temperature}°C</span>
                         </div>
                       </div>
 
                       {em.triage_notes && (
-                        <div className="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800/80 leading-relaxed">
-                          <span className="text-slate-500 text-[10px] font-mono block mb-1 uppercase tracking-wider">
+                        <div className="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100 leading-relaxed">
+                          <span className="text-slate-400 text-[10px] font-mono block mb-1 uppercase tracking-wider font-semibold">
                             Attending Clinical Triage Notes:
                           </span>
                           {em.triage_notes}
@@ -1410,11 +1449,13 @@ export default function App() {
         {activeTab === 'admin' && (
           <div className="space-y-6">
             {/* Sub-navigation Controls */}
-            <div className="flex gap-2 p-1.5 bg-[#0f172a] rounded-2xl border border-slate-800 overflow-x-auto">
+            <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80 overflow-x-auto">
               <button
                 onClick={() => setAdminSubTab('doctors')}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                  adminSubTab === 'doctors' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200'
+                  adminSubTab === 'doctors'
+                    ? 'bg-white text-cyan-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Medical Staff Directory & Onboarding
@@ -1422,7 +1463,9 @@ export default function App() {
               <button
                 onClick={() => setAdminSubTab('users')}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                  adminSubTab === 'users' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200'
+                  adminSubTab === 'users'
+                    ? 'bg-white text-cyan-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 System Users Directory ({adminUsers.length})
@@ -1430,7 +1473,9 @@ export default function App() {
               <button
                 onClick={() => setAdminSubTab('appointments')}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                  adminSubTab === 'appointments' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200'
+                  adminSubTab === 'appointments'
+                    ? 'bg-white text-cyan-900 shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Hospital Appointments Registry ({adminAppointments.length})
@@ -1519,11 +1564,11 @@ export default function App() {
                       {doctorsList.map(doc => (
                         <div
                           key={doc.id}
-                          className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between"
+                          className="p-4 rounded-2xl bg-white/90 border border-slate-100 shadow-sm flex items-center justify-between"
                         >
                           <div>
-                            <div className="text-xs font-bold text-slate-100">{doc.name}</div>
-                            <div className="text-[11px] text-cyan-400 mt-0.5">{doc.department} Clinic</div>
+                            <div className="text-xs font-bold text-slate-800">{doc.name}</div>
+                            <div className="text-[11px] text-cyan-700 font-medium mt-0.5">{doc.department} Clinic</div>
                           </div>
                           <Badge variant="neutral" size="sm">
                             DOC-{doc.id.toString().padStart(3, '0')}
@@ -1562,9 +1607,9 @@ export default function App() {
                     <TableBody>
                       {adminUsers.map(u => (
                         <TableRow key={u.id}>
-                          <TableCell className="font-mono text-cyan-400">#{u.id}</TableCell>
-                          <TableCell className="font-semibold text-slate-100">{u.full_name}</TableCell>
-                          <TableCell className="font-mono text-slate-400">{u.email}</TableCell>
+                          <TableCell className="font-mono text-cyan-700 font-semibold">#{u.id}</TableCell>
+                          <TableCell className="font-semibold text-slate-800">{u.full_name}</TableCell>
+                          <TableCell className="font-mono text-slate-500">{u.email}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
@@ -1576,7 +1621,7 @@ export default function App() {
                               {u.role}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-slate-400">{u.department || '—'}</TableCell>
+                          <TableCell className="text-slate-600">{u.department || '—'}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -1614,12 +1659,12 @@ export default function App() {
                     <TableBody>
                       {adminAppointments.map(a => (
                         <TableRow key={a.id}>
-                          <TableCell className="font-mono text-cyan-400">#{a.id}</TableCell>
-                          <TableCell className="font-semibold text-slate-100">{a.patient_name}</TableCell>
-                          <TableCell className="text-slate-300">{a.doctor_name}</TableCell>
-                          <TableCell className="text-slate-400">{a.department}</TableCell>
-                          <TableCell className="font-mono text-slate-400 text-[11px]">{a.appointment_date} {a.appointment_time}</TableCell>
-                          <TableCell className="font-mono text-cyan-400">#{a.queue_number}</TableCell>
+                          <TableCell className="font-mono text-cyan-700 font-semibold">#{a.id}</TableCell>
+                          <TableCell className="font-semibold text-slate-800">{a.patient_name}</TableCell>
+                          <TableCell className="text-slate-700">{a.doctor_name}</TableCell>
+                          <TableCell className="text-slate-600">{a.department}</TableCell>
+                          <TableCell className="font-mono text-slate-500 text-[11px]">{a.appointment_date} {a.appointment_time}</TableCell>
+                          <TableCell className="font-mono text-cyan-700 font-semibold">#{a.queue_number}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
@@ -1722,7 +1767,7 @@ export default function App() {
             />
           </FormField>
 
-          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
             <Button
               variant="outline"
               onClick={() => setShowEmergencyModal(false)}
@@ -1751,8 +1796,8 @@ export default function App() {
         maxWidth="max-w-2xl"
       >
         <div className="space-y-4">
-          <div className="flex justify-between items-center pb-2 border-b border-slate-800">
-            <span className="text-xs font-semibold text-slate-300">Clinical Evaluation Ledger</span>
+          <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+            <span className="text-xs font-semibold text-slate-700">Clinical Evaluation Ledger</span>
             {currentUser.role === 'doctor' && selectedPatientEhr && (
               <Button
                 variant="success"
@@ -1781,11 +1826,11 @@ export default function App() {
               />
             ) : (
               selectedPatientEhr && selectedPatientEhr.records.map(rec => (
-                <div key={rec.id} className="bg-[#0b0f19] p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
+                <div key={rec.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-2 text-xs">
                   <div className="flex justify-between items-center">
                     <div>
-                      <span className="font-bold text-cyan-400">{rec.record_type}</span>
-                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">{rec.created_at}</div>
+                      <span className="font-bold text-cyan-900">{rec.record_type}</span>
+                      <div className="text-[10px] text-slate-400 font-mono mt-0.5">{rec.created_at}</div>
                     </div>
                     <Badge
                       variant={
@@ -1800,7 +1845,7 @@ export default function App() {
                   </div>
                   <div className="space-y-1">
                     {rec.details && rec.details.map((d, idx) => (
-                      <div key={idx} className="text-slate-300 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 leading-relaxed">
+                      <div key={idx} className="text-slate-700 bg-slate-50/80 p-2 rounded-xl border border-slate-100 leading-relaxed">
                         {d}
                       </div>
                     ))}
@@ -1866,7 +1911,7 @@ export default function App() {
               />
             </FormField>
 
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
               <Button
                 variant="outline"
                 onClick={() => setDoctorClinicalModal(null)}

@@ -111,15 +111,15 @@ export default function ImagingDashboard({ currentUser }) {
               }}
               className={`p-4 rounded-2xl border text-left transition-all duration-150 flex items-center gap-3 ${
                 isActive
-                  ? 'bg-cyan-600/10 border-cyan-500/50 shadow-sm shadow-cyan-950/40 text-white'
-                  : 'bg-[#0f172a]/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? 'bg-gradient-to-r from-teal-50 to-cyan-50/80 border-cyan-400/60 shadow-[0_4px_14px_rgba(6,182,212,0.12)] text-cyan-950 font-semibold'
+                  : 'bg-white/85 border-slate-200/90 text-slate-600 hover:text-slate-900 hover:border-slate-300 shadow-sm'
               }`}
             >
-              <div className={`p-2.5 rounded-xl border ${isActive ? 'bg-cyan-600 text-white border-cyan-400/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+              <div className={`p-2.5 rounded-xl border ${isActive ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white border-transparent shadow-sm' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
                 <Icon className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <div className={`text-xs font-semibold ${isActive ? 'text-cyan-300' : 'text-slate-200'}`}>{mod.name}</div>
+                <div className={`text-xs font-semibold ${isActive ? 'text-cyan-900' : 'text-slate-800'}`}>{mod.name}</div>
                 <div className="text-[10px] text-slate-500 truncate mt-0.5">{mod.id.toUpperCase()} Vision Pipeline</div>
               </div>
             </button>
@@ -155,21 +155,21 @@ export default function ImagingDashboard({ currentUser }) {
 
             <FormField label="Medical Scan File (DICOM / Image)">
               {!previewUrl ? (
-                <label className="border-2 border-dashed border-slate-800 hover:border-cyan-500/40 bg-[#0b0f19] rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all group">
-                  <div className="w-12 h-12 rounded-xl bg-slate-800/80 group-hover:bg-cyan-500/10 text-slate-400 group-hover:text-cyan-400 flex items-center justify-center mb-3 transition-colors">
+                <label className="border-2 border-dashed border-slate-200 hover:border-cyan-400 bg-slate-50/60 hover:bg-cyan-50/20 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all group">
+                  <div className="w-12 h-12 rounded-xl bg-white shadow-sm group-hover:bg-cyan-50 text-slate-400 group-hover:text-cyan-600 flex items-center justify-center mb-3 transition-colors border border-slate-100">
                     <Upload className="w-6 h-6" />
                   </div>
-                  <span className="text-xs font-semibold text-slate-200">Click or drag scan to upload</span>
-                  <span className="text-[10px] text-slate-500 font-mono mt-1">Supports PNG, JPG, JPEG</span>
+                  <span className="text-xs font-semibold text-slate-700">Click or drag scan to upload</span>
+                  <span className="text-[10px] text-slate-400 font-mono mt-1">Supports PNG, JPG, JPEG</span>
                   <input type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
                 </label>
               ) : (
-                <div className="relative bg-[#0b0f19] border border-slate-800 rounded-2xl p-3 flex flex-col items-center overflow-hidden">
+                <div className="relative bg-slate-50/80 border border-slate-200 rounded-2xl p-3 flex flex-col items-center overflow-hidden shadow-inner">
                   <img src={previewUrl} alt="Scan Preview" className="max-h-64 rounded-xl object-contain" />
                   <button
                     type="button"
                     onClick={handleRemoveImage}
-                    className="absolute top-4 right-4 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-md"
+                    className="absolute top-4 right-4 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-sm"
                   >
                     <Trash2 className="w-3.5 h-3.5" /> Remove
                   </button>
@@ -199,12 +199,12 @@ export default function ImagingDashboard({ currentUser }) {
             />
           ) : (
             <CardContent className="space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-[#0b0f19] border border-slate-800">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50/30 border border-slate-100 shadow-sm">
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
                     Diagnostic Modality
                   </span>
-                  <div className="text-sm font-bold text-slate-100 mt-0.5">{currentModule.name}</div>
+                  <div className="text-sm font-bold text-slate-800 mt-0.5">{currentModule.name}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge
@@ -223,26 +223,26 @@ export default function ImagingDashboard({ currentUser }) {
               </div>
 
               {analysisResult.annotated_image && (
-                <div className="bg-[#090d16] p-3 rounded-2xl border border-slate-800/80 flex flex-col items-center">
-                  <div className="text-[10px] text-slate-500 font-mono mb-2 self-start uppercase tracking-wider">
+                <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
+                  <div className="text-[10px] text-slate-500 font-mono mb-2 self-start uppercase tracking-wider font-semibold">
                     Computer Vision Feature Map
                   </div>
                   <img
                     src={analysisResult.annotated_image}
                     alt="Neural Detection"
-                    className="max-h-72 rounded-xl object-contain shadow-md"
+                    className="max-h-72 rounded-xl object-contain shadow-sm border border-slate-200 bg-white"
                   />
                 </div>
               )}
 
-              <div className="space-y-3 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
-                <div className="text-xs font-semibold text-cyan-400 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+              <div className="space-y-3 bg-white/90 p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="text-xs font-semibold text-cyan-700 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-600" />
                   <span>Primary Finding: {analysisResult.diagnosis || 'Evaluation completed.'}</span>
                 </div>
-                <div className="space-y-1.5 pl-6 border-l-2 border-slate-800">
+                <div className="space-y-1.5 pl-6 border-l-2 border-cyan-200">
                   {(analysisResult.details || ['No pathological abnormalities detected in scanned region.']).map((d, i) => (
-                    <p key={i} className="text-xs text-slate-300 leading-relaxed">{d}</p>
+                    <p key={i} className="text-xs text-slate-700 leading-relaxed">{d}</p>
                   ))}
                 </div>
               </div>

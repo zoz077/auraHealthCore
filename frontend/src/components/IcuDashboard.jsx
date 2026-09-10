@@ -127,13 +127,13 @@ export default function IcuDashboard({ currentUser }) {
           />
         ) : (
           <CardContent className="space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#0b0f19] border border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50/30 border border-slate-100 shadow-sm">
               <div>
-                <span className="text-[11px] uppercase tracking-wider text-slate-400 font-mono block">
+                <span className="text-[11px] uppercase tracking-wider text-slate-500 font-medium block">
                   Calculated Decompensation Risk
                 </span>
                 <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-3xl font-bold font-mono text-cyan-400">{result.risk_score}%</span>
+                  <span className="text-3xl font-bold font-mono text-cyan-700">{result.risk_score}%</span>
                   <span className="text-xs text-slate-500 font-mono">probabilistic score</span>
                 </div>
               </div>
@@ -151,12 +151,12 @@ export default function IcuDashboard({ currentUser }) {
 
             {/* Risk Gauge Bar */}
             <div className="space-y-1.5">
-              <div className="flex justify-between text-[11px] font-mono text-slate-400">
+              <div className="flex justify-between text-[11px] font-medium text-slate-500">
                 <span>Low Acuity</span>
                 <span>Moderate</span>
                 <span>High Decompensation</span>
               </div>
-              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden flex">
+              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
                 <div
                   className={`transition-all duration-500 rounded-full ${
                     result.status_level === 'HIGH'
@@ -169,17 +169,17 @@ export default function IcuDashboard({ currentUser }) {
             </div>
 
             <div className="space-y-2 pt-2">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
-                <ShieldCheck className="w-4 h-4 text-cyan-400" />
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                <ShieldCheck className="w-4 h-4 text-cyan-600" />
                 <span>Diagnostic Protocol & Biomarker Analysis</span>
               </div>
               <div className="space-y-2">
                 {result.details.map((d, i) => (
                   <div
                     key={i}
-                    className="text-xs bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800/80 text-slate-300 leading-relaxed flex items-start gap-2.5"
+                    className="text-xs bg-white/90 p-3.5 rounded-xl border border-slate-100 text-slate-700 shadow-sm leading-relaxed flex items-start gap-2.5"
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                     <span>{d}</span>
                   </div>
                 ))}

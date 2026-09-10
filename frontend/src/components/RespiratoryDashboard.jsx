@@ -125,13 +125,13 @@ export default function RespiratoryDashboard({ currentUser }) {
               onClick={() => handleTabChange(m.id)}
               className={`p-3 rounded-2xl border text-left transition-all duration-150 flex flex-col justify-between ${
                 isActive
-                  ? 'bg-cyan-600/10 border-cyan-500/50 text-white shadow-sm shadow-cyan-950/40'
-                  : 'bg-[#0f172a]/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                  ? 'bg-gradient-to-r from-teal-50 to-cyan-50/80 border-cyan-400/60 text-cyan-950 font-semibold shadow-[0_4px_12px_rgba(6,182,212,0.12)]'
+                  : 'bg-white/85 border-slate-200/90 text-slate-600 hover:text-slate-900 hover:border-slate-300 shadow-sm'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
-                <span className={`text-xs font-semibold ${isActive ? 'text-cyan-300' : 'text-slate-200'}`}>{m.label}</span>
+                <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-700' : 'text-slate-400'}`} />
+                <span className={`text-xs font-semibold ${isActive ? 'text-cyan-900' : 'text-slate-800'}`}>{m.label}</span>
               </div>
               <span className="text-[10px] text-slate-500 truncate">{m.sub}</span>
             </button>
@@ -155,7 +155,7 @@ export default function RespiratoryDashboard({ currentUser }) {
             <form onSubmit={handleAnalyze} className="space-y-4">
               {testType === 'sounds' ? (
                 <FormField label="Lung Auscultation Audio File">
-                  <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/40 rounded-2xl p-6 text-center bg-[#0b0f19] relative transition-all cursor-pointer group">
+                  <div className="border-2 border-dashed border-slate-200 hover:border-cyan-400 rounded-2xl p-6 text-center bg-slate-50/60 hover:bg-cyan-50/20 relative transition-all cursor-pointer group">
                     <input
                       key={testType}
                       type="file"
@@ -163,18 +163,18 @@ export default function RespiratoryDashboard({ currentUser }) {
                       onChange={(e) => e.target.files?.[0] && setSelectedFile(e.target.files[0])}
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                     />
-                    <div className="w-10 h-10 rounded-xl bg-slate-800/80 group-hover:bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-2 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-cyan-600 flex items-center justify-center mx-auto mb-2 transition-colors border border-slate-100">
                       <Volume2 className="w-5 h-5" />
                     </div>
-                    <span className="text-xs text-slate-200 font-medium block">
+                    <span className="text-xs text-slate-700 font-medium block">
                       {selectedFile ? selectedFile.name : 'Click or drag Lung Sound Audio file'}
                     </span>
-                    <span className="text-[10px] text-slate-500 block mt-1 font-mono">Supports WAV, MP3 formats</span>
+                    <span className="text-[10px] text-slate-400 block mt-1 font-mono">Supports WAV, MP3 formats</span>
                   </div>
                 </FormField>
               ) : testType !== 'vitals' ? (
                 <FormField label={`Radiographic Scan (${testType.toUpperCase()})`}>
-                  <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/40 rounded-2xl p-6 text-center bg-[#0b0f19] relative transition-all cursor-pointer group">
+                  <div className="border-2 border-dashed border-slate-200 hover:border-cyan-400 rounded-2xl p-6 text-center bg-slate-50/60 hover:bg-cyan-50/20 relative transition-all cursor-pointer group">
                     <input
                       key={testType}
                       type="file"
@@ -182,13 +182,13 @@ export default function RespiratoryDashboard({ currentUser }) {
                       onChange={(e) => e.target.files?.[0] && setSelectedFile(e.target.files[0])}
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                     />
-                    <div className="w-10 h-10 rounded-xl bg-slate-800/80 group-hover:bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-2 transition-colors">
+                    <div className="w-10 h-10 rounded-xl bg-white shadow-sm text-cyan-600 flex items-center justify-center mx-auto mb-2 transition-colors border border-slate-100">
                       <Upload className="w-5 h-5" />
                     </div>
-                    <span className="text-xs text-slate-200 font-medium block">
+                    <span className="text-xs text-slate-700 font-medium block">
                       {selectedFile ? selectedFile.name : `Click or drag scan for ${testType.toUpperCase()} evaluation`}
                     </span>
-                    <span className="text-[10px] text-slate-500 block mt-1 font-mono">Supports PNG, JPG, JPEG</span>
+                    <span className="text-[10px] text-slate-400 block mt-1 font-mono">Supports PNG, JPG, JPEG</span>
                   </div>
                 </FormField>
               ) : (
@@ -252,12 +252,12 @@ export default function RespiratoryDashboard({ currentUser }) {
             />
           ) : (
             <CardContent className="space-y-5">
-              <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50/30 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
                     Pulmonary Clinical Finding
                   </span>
-                  <div className="text-base font-bold text-slate-100 mt-0.5">{result.diagnosis}</div>
+                  <div className="text-base font-bold text-slate-800 mt-0.5">{result.diagnosis}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge
@@ -276,26 +276,26 @@ export default function RespiratoryDashboard({ currentUser }) {
               </div>
 
               {result.details && (
-                <div className="space-y-2.5 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
-                  <span className="text-xs font-semibold text-cyan-400 block mb-1">
+                <div className="space-y-2.5 bg-white/90 p-4 rounded-2xl border border-slate-100 shadow-sm">
+                  <span className="text-xs font-semibold text-cyan-700 block mb-1">
                     Diagnostic Biomarker Breakdown:
                   </span>
                   {Array.isArray(result.details) ? (
                     result.details.map((detail, idx) => (
-                      <div key={idx} className="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80 flex items-start gap-2">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
+                      <div key={idx} className="text-xs text-slate-700 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100 flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600 shrink-0 mt-0.5" />
                         <span>{detail}</span>
                       </div>
                     ))
                   ) : typeof result.details === 'object' ? (
                     Object.entries(result.details).map(([cls, prob], idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
-                        <span className="font-medium text-slate-200">{cls}</span>
-                        <span className="text-cyan-400 font-mono font-semibold">{prob}</span>
+                      <div key={idx} className="flex justify-between items-center text-xs text-slate-700 bg-slate-50/80 p-2.5 rounded-xl border border-slate-100">
+                        <span className="font-medium text-slate-800">{cls}</span>
+                        <span className="text-cyan-700 font-mono font-semibold">{prob}</span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl">
+                    <div className="text-xs text-slate-700 bg-slate-50/80 p-2.5 rounded-xl">
                       {result.details}
                     </div>
                   )}

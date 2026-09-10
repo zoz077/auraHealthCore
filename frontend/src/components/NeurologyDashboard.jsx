@@ -184,7 +184,7 @@ export default function NeurologyDashboard({ currentUser }) {
   return (
     <div className="space-y-6">
       {/* Module Sub-navigation */}
-      <div className="flex flex-wrap gap-2 p-1.5 bg-[#0f172a] rounded-2xl border border-slate-800">
+      <div className="flex flex-wrap gap-2 p-1.5 bg-slate-200/50 rounded-2xl border border-slate-200/60 backdrop-blur-sm">
         {subtabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSubTab === tab.id;
@@ -194,8 +194,8 @@ export default function NeurologyDashboard({ currentUser }) {
               onClick={() => resetState(tab.id)}
               className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
                 isActive
-                  ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  ? 'bg-white text-cyan-900 shadow-[0_2px_8px_rgba(0,0,0,0.06),2px_2px_6px_#e2e8f0]'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
               <Icon className="w-4 h-4" />
@@ -225,22 +225,22 @@ export default function NeurologyDashboard({ currentUser }) {
             {['tumor', 'alzheimer', 'parkinson', 'spine'].includes(activeSubTab) && (
               <div className="space-y-4">
                 <FormField label="Scan Ingestion File">
-                  <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/40 rounded-2xl p-6 text-center bg-[#0b0f19] transition-all">
+                  <div className="border-2 border-dashed border-slate-200 hover:border-cyan-400 rounded-2xl p-6 text-center bg-slate-50/60 hover:bg-cyan-50/20 transition-all">
                     {previewUrl ? (
                       <div className="relative inline-block">
-                        <img src={previewUrl} alt="Scan Preview" className="max-h-48 mx-auto rounded-xl object-contain border border-slate-700" />
+                        <img src={previewUrl} alt="Scan Preview" className="max-h-48 mx-auto rounded-xl object-contain border border-slate-200 shadow-sm bg-white" />
                         <button
                           onClick={() => { setSelectedFile(null); setPreviewUrl(null); }}
-                          className="mt-2 text-[11px] text-rose-400 hover:underline block mx-auto"
+                          className="mt-2 text-[11px] text-rose-600 hover:underline block mx-auto font-medium"
                         >
                           Clear image
                         </button>
                       </div>
                     ) : (
                       <label className="cursor-pointer block">
-                        <UploadCloud className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                        <p className="text-xs font-semibold text-slate-200">Upload Neurological Scan</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Supports PNG, JPG, DICOM preview</p>
+                        <UploadCloud className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                        <p className="text-xs font-semibold text-slate-700">Upload Neurological Scan</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">Supports PNG, JPG, DICOM preview</p>
                         <input
                           type="file"
                           accept="image/*"
@@ -274,7 +274,7 @@ export default function NeurologyDashboard({ currentUser }) {
 
             {activeSubTab === 'eeg' && (
               <div className="space-y-3">
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-500 leading-relaxed">
                   Stream 178-point EEG cerebral microvoltage waveform vectors into the seizure classification pipeline:
                 </p>
                 <Button
@@ -300,11 +300,11 @@ export default function NeurologyDashboard({ currentUser }) {
 
             {activeSubTab === 'vision' && (
               <div className="space-y-4">
-                <div className="flex bg-[#0b0f19] p-1 rounded-xl border border-slate-800 gap-1 text-xs">
+                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 text-xs">
                   <button
                     onClick={() => { setVisionMode('camera'); startCamera(); }}
                     className={`flex-1 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-all ${
-                      visionMode === 'camera' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                      visionMode === 'camera' ? 'bg-white text-cyan-900 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <Camera className="w-3.5 h-3.5" /> Live Camera
@@ -312,7 +312,7 @@ export default function NeurologyDashboard({ currentUser }) {
                   <button
                     onClick={() => { setVisionMode('video'); stopCamera(); }}
                     className={`flex-1 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-all ${
-                      visionMode === 'video' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                      visionMode === 'video' ? 'bg-white text-cyan-900 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <Video className="w-3.5 h-3.5" /> Video File
@@ -320,7 +320,7 @@ export default function NeurologyDashboard({ currentUser }) {
                   <button
                     onClick={() => { setVisionMode('sliders'); stopCamera(); }}
                     className={`flex-1 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-all ${
-                      visionMode === 'sliders' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                      visionMode === 'sliders' ? 'bg-white text-cyan-900 shadow-sm font-semibold' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     <Sliders className="w-3.5 h-3.5" /> Metrics
@@ -329,7 +329,7 @@ export default function NeurologyDashboard({ currentUser }) {
 
                 {visionMode === 'camera' && (
                   <div className="space-y-3">
-                    <div className="relative rounded-2xl overflow-hidden bg-black border border-slate-800 aspect-video flex items-center justify-center">
+                    <div className="relative rounded-2xl overflow-hidden bg-slate-900 border border-slate-200 aspect-video flex items-center justify-center shadow-inner">
                       <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
                       {!isCameraActive && (
                         <Button onClick={startCamera} icon={Camera} size="sm" className="absolute">
@@ -342,26 +342,26 @@ export default function NeurologyDashboard({ currentUser }) {
                 )}
 
                 {visionMode === 'video' && (
-                  <div className="border-2 border-dashed border-slate-800 rounded-2xl p-6 text-center bg-[#0b0f19]">
-                    <Video className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                    <p className="text-xs text-slate-400 mb-2">Upload facial & ocular tracking video</p>
+                  <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center bg-slate-50/60">
+                    <Video className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <p className="text-xs text-slate-600 mb-2">Upload facial & ocular tracking video</p>
                     <input
                       type="file"
                       accept="video/*"
                       onChange={(e) => {
                         if (e.target.files[0]) setSelectedFile(e.target.files[0]);
                       }}
-                      className="text-xs text-slate-400 block w-full mx-auto"
+                      className="text-xs text-slate-500 block w-full mx-auto"
                     />
                   </div>
                 )}
 
                 {visionMode === 'sliders' && (
-                  <div className="space-y-3 bg-[#0b0f19] p-4 rounded-xl border border-slate-800 text-xs">
+                  <div className="space-y-3 bg-white/90 p-4 rounded-xl border border-slate-200 text-xs shadow-sm">
                     <div>
-                      <div className="flex justify-between text-slate-400 mb-1">
+                      <div className="flex justify-between text-slate-600 mb-1">
                         <span>Facial Asymmetry Ratio</span>
-                        <span className="font-mono text-cyan-400 font-semibold">{asymmetry}</span>
+                        <span className="font-mono text-cyan-700 font-semibold">{asymmetry}</span>
                       </div>
                       <input
                         type="range"
@@ -370,13 +370,13 @@ export default function NeurologyDashboard({ currentUser }) {
                         step="0.01"
                         value={asymmetry}
                         onChange={e => setAsymmetry(parseFloat(e.target.value))}
-                        className="w-full accent-cyan-500"
+                        className="w-full accent-cyan-600"
                       />
                     </div>
                     <div>
-                      <div className="flex justify-between text-slate-400 mb-1">
+                      <div className="flex justify-between text-slate-600 mb-1">
                         <span>Motor Tremor Variance</span>
-                        <span className="font-mono text-cyan-400 font-semibold">{tremor} Hz</span>
+                        <span className="font-mono text-cyan-700 font-semibold">{tremor} Hz</span>
                       </div>
                       <input
                         type="range"
@@ -385,7 +385,7 @@ export default function NeurologyDashboard({ currentUser }) {
                         step="0.5"
                         value={tremor}
                         onChange={e => setTremor(parseFloat(e.target.value))}
-                        className="w-full accent-cyan-500"
+                        className="w-full accent-cyan-600"
                       />
                     </div>
                   </div>
@@ -414,12 +414,12 @@ export default function NeurologyDashboard({ currentUser }) {
             />
           ) : (
             <CardContent className="space-y-5">
-              <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50/30 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
                     Primary Neurological Diagnosis
                   </span>
-                  <div className="text-base font-bold text-cyan-400 mt-0.5">{result.diagnosis}</div>
+                  <div className="text-base font-bold text-cyan-900 mt-0.5">{result.diagnosis}</div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={Number(result.confidence) > 50 ? 'danger' : 'success'} size="lg" dot>
@@ -433,12 +433,12 @@ export default function NeurologyDashboard({ currentUser }) {
 
               {/* U-Net Tumor Segmentation Info */}
               {result.tumor_area_percentage !== undefined && (
-                <div className="p-4 bg-[#0b0f19] rounded-2xl border border-slate-800 space-y-2">
+                <div className="p-4 bg-white/90 rounded-2xl border border-slate-100 space-y-2 shadow-sm">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400 font-medium">U-Net Tumor Area Coverage</span>
-                    <span className="font-mono text-rose-400 font-bold">{result.tumor_area_percentage}%</span>
+                    <span className="text-slate-600 font-medium">U-Net Tumor Area Coverage</span>
+                    <span className="font-mono text-rose-600 font-bold">{result.tumor_area_percentage}%</span>
                   </div>
-                  <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden shadow-inner">
                     <div
                       className="bg-gradient-to-r from-amber-500 to-rose-500 h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(100, Math.max(5, result.tumor_area_percentage * 3))}%` }}
@@ -450,20 +450,20 @@ export default function NeurologyDashboard({ currentUser }) {
 
               {/* Probabilities Breakdown */}
               {result.probabilities && (
-                <div className="space-y-2.5 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 mb-2">
-                    <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                <div className="space-y-2.5 bg-white/90 p-4 rounded-2xl border border-slate-100 shadow-sm">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 mb-2">
+                    <ShieldCheck className="w-4 h-4 text-cyan-600" />
                     <span>Differential Probability Distribution</span>
                   </div>
                   {Object.entries(result.probabilities).map(([cls, prob]) => (
                     <div key={cls} className="space-y-1">
-                      <div className="flex justify-between text-xs text-slate-400">
+                      <div className="flex justify-between text-xs text-slate-600">
                         <span className="font-medium">{cls}</span>
-                        <span className="font-mono text-slate-300 font-semibold">{prob}%</span>
+                        <span className="font-mono text-slate-800 font-semibold">{prob}%</span>
                       </div>
-                      <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden shadow-inner">
                         <div
-                          className="bg-cyan-500 h-full rounded-full transition-all duration-500"
+                          className="bg-gradient-to-r from-teal-500 to-cyan-500 h-full rounded-full transition-all duration-500"
                           style={{ width: `${prob}%` }}
                         />
                       </div>

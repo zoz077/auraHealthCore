@@ -10,23 +10,23 @@ export default function Alert({
 }) {
   const configs = {
     info: {
-      border: 'border-cyan-500/25 bg-cyan-950/20 text-cyan-200',
-      iconColor: 'text-cyan-400',
+      border: 'border-cyan-200/80 bg-cyan-50/80 text-cyan-950',
+      iconColor: 'text-cyan-600',
       icon: Info,
     },
     success: {
-      border: 'border-emerald-500/25 bg-emerald-950/20 text-emerald-200',
-      iconColor: 'text-emerald-400',
+      border: 'border-emerald-200/80 bg-emerald-50/80 text-emerald-950',
+      iconColor: 'text-emerald-600',
       icon: CheckCircle2,
     },
     warning: {
-      border: 'border-amber-500/25 bg-amber-950/20 text-amber-200',
-      iconColor: 'text-amber-400',
+      border: 'border-amber-200/80 bg-amber-50/80 text-amber-950',
+      iconColor: 'text-amber-600',
       icon: AlertTriangle,
     },
     error: {
-      border: 'border-rose-500/25 bg-rose-950/20 text-rose-200',
-      iconColor: 'text-rose-400',
+      border: 'border-rose-200/80 bg-rose-50/80 text-rose-950',
+      iconColor: 'text-rose-600',
       icon: AlertCircle,
     },
   };
@@ -37,17 +37,17 @@ export default function Alert({
   return (
     <div
       role="alert"
-      className={`relative p-3.5 rounded-xl border text-xs flex items-start gap-3 ${config.border} ${className}`}
+      className={`relative p-3.5 rounded-xl border text-xs flex items-start gap-3 backdrop-blur-sm ${config.border} ${className}`}
     >
       <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${config.iconColor}`} />
       <div className="flex-1 space-y-0.5">
-        {title && <h5 className="font-semibold text-slate-100">{title}</h5>}
-        <div className="text-slate-300 leading-relaxed">{children}</div>
+        {title && <h5 className="font-semibold text-slate-800">{title}</h5>}
+        <div className="leading-relaxed opacity-90">{children}</div>
       </div>
       {onDismiss && (
         <button
           onClick={onDismiss}
-          className="text-slate-400 hover:text-slate-200 p-0.5 rounded transition-colors"
+          className="text-slate-400 hover:text-slate-700 p-0.5 rounded transition-colors"
         >
           <X className="w-3.5 h-3.5" />
         </button>

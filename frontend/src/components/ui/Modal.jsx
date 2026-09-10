@@ -31,16 +31,16 @@ export default function Modal({
   if (!isOpen) return null;
 
   const iconColors = {
-    default: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
-    danger: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-    success: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    default: 'text-cyan-600 bg-cyan-50 border-cyan-200/80',
+    danger: 'text-rose-600 bg-rose-50 border-rose-200/80',
+    success: 'text-emerald-600 bg-emerald-50 border-emerald-200/80',
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity duration-200"
+        className="fixed inset-0 bg-slate-900/30 backdrop-blur-md transition-opacity duration-200"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -49,10 +49,10 @@ export default function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative w-full ${maxWidth} bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl shadow-black/80 overflow-hidden transform transition-all duration-200 animate-in fade-in-0 zoom-in-95 my-8 ${className}`}
+        className={`relative w-full ${maxWidth} bg-white/95 backdrop-blur-xl border border-white/90 rounded-3xl shadow-[0_25px_60px_-15px_rgba(15,23,42,0.18)] overflow-hidden transform transition-all duration-200 animate-in fade-in-0 zoom-in-95 my-8 ${className}`}
       >
         {/* Header */}
-        <div className="p-5 border-b border-slate-800/80 flex items-start justify-between gap-4">
+        <div className="p-5 border-b border-slate-100/90 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             {Icon && (
               <div className={`p-2 rounded-xl border ${iconColors[headerVariant] || iconColors.default} shrink-0 mt-0.5`}>
@@ -60,14 +60,14 @@ export default function Modal({
               </div>
             )}
             <div>
-              <h2 className="text-sm sm:text-base font-semibold text-slate-100">{title}</h2>
-              {description && <p className="text-xs text-slate-400 mt-0.5">{description}</p>}
+              <h2 className="text-sm sm:text-base font-semibold text-slate-800">{title}</h2>
+              {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800/80 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
             aria-label="Close dialog"
           >
             <X className="w-4 h-4" />
