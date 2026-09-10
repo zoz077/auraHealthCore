@@ -1,6 +1,12 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Upload, FileImage, Cpu, CheckCircle2, AlertTriangle, Trash2, Save } from 'lucide-react';
+import { Upload, FileImage, Cpu, CheckCircle2, Trash2, Save, Brain, Activity } from 'lucide-react';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
+import { FormField, Input } from './ui/Input';
+import Alert from './ui/Alert';
+import EmptyState from './ui/EmptyState';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -17,9 +23,9 @@ export default function ImagingDashboard({ currentUser }) {
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   const modules = [
-    { id: 'mri', name: 'Brain & Body MRI', subtitle: 'Magnetic Resonance Imaging for Tissues & Tumors', endpoint: '/api/mri/detect' },
-    { id: 'xray', name: 'Diagnostic X-Ray', subtitle: 'Chest & Bone X-Ray Pathological Analysis', endpoint: '/api/xray/detect' },
-    { id: 'ultrasound', name: 'Ultrasound Scan', subtitle: 'Abdominal & Soft Tissue Ultrasound Evaluation', endpoint: '/api/ultrasound/detect' },
+    { id: 'mri', name: 'Brain & Body MRI', subtitle: 'Magnetic Resonance Imaging for Tissues & Tumors', icon: Brain, endpoint: '/api/mri/detect' },
+    { id: 'xray', name: 'Diagnostic X-Ray', subtitle: 'Chest & Bone Radiographic Pathological Analysis', icon: FileImage, endpoint: '/api/xray/detect' },
+    { id: 'ultrasound', name: 'Ultrasound Scan', subtitle: 'Abdominal & Soft Tissue Ultrasound Evaluation', icon: Activity, endpoint: '/api/ultrasound/detect' },
   ];
 
   const currentModule = modules.find(m => m.id === activeSubTab);
@@ -66,7 +72,7 @@ export default function ImagingDashboard({ currentUser }) {
       setAnalysisResult(payload);
     } catch (err) {
       setErrorMessage(
-        err.response?.data?.detail || err.response?.statusText || 'Analysis request failed. Engine returned error.'
+        err.response?.data?.detail || err.response?.statusText || 'Analysis request failed. Neural Engine returned error.'
       );
     } finally {
       setLoading(false);
@@ -91,143 +97,170 @@ export default function ImagingDashboard({ currentUser }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-2 bg-[#111827] p-2 rounded-2xl border border-slate-800">
-        {modules.map((mod) => (
-          <button
-            key={mod.id}
-            onClick={() => {
-              setActiveSubTab(mod.id);
-              handleRemoveImage();
-            }}
-            className={`flex-1 py-3 px-4 rounded-xl text-xs font-semibold transition-all ${
-              activeSubTab === mod.id
-                ? 'bg-cyan-600 text-white shadow-lg'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-            }`}
-          >
-            {mod.name}
-          </button>
-        ))}
+      {/* Modality Selector Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {modules.map((mod) => {
+          const Icon = mod.icon;
+          const isActive = activeSubTab === mod.id;
+          return (
+            <button
+              key={mod.id}
+              onClick={() => {
+                setActiveSubTab(mod.id);
+                handleRemoveImage();
+              }}
+              className={`p-4 rounded-2xl border text-left transition-all duration-150 flex items-center gap-3 ${
+                isActive
+                  ? 'bg-cyan-600/10 border-cyan-500/50 shadow-sm shadow-cyan-950/40 text-white'
+                  : 'bg-[#0f172a]/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+              }`}
+            >
+              <div className={`p-2.5 rounded-xl border ${isActive ? 'bg-cyan-600 text-white border-cyan-400/40' : 'bg-slate-800 text-slate-400 border-slate-700'}`}>
+                <Icon className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className={`text-xs font-semibold ${isActive ? 'text-cyan-300' : 'text-slate-200'}`}>{mod.name}</div>
+                <div className="text-[10px] text-slate-500 truncate mt-0.5">{mod.id.toUpperCase()} Vision Pipeline</div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
-      <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-6">
-        <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-          <div>
-            <h2 className="text-lg font-bold text-slate-100 flex items-center gap-2">
-              <FileImage className="w-5 h-5 text-cyan-400" />
-              {currentModule.name} Analysis
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">{currentModule.subtitle}</p>
-          </div>
-          <span className="text-[10px] font-mono bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 px-3 py-1 rounded-full">
-            AI Module Ready
-          </span>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Image Ingestion Console */}
+        <Card className="lg:col-span-5">
+          <CardHeader>
+            <div>
+              <CardTitle icon={currentModule.icon}>{currentModule.name} Ingestion</CardTitle>
+              <CardDescription>{currentModule.subtitle}</CardDescription>
+            </div>
+            <Badge variant="info" size="sm" dot>Engine Ready</Badge>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {errorMessage && (
+              <Alert variant="error" onDismiss={() => setErrorMessage('')}>
+                {errorMessage}
+              </Alert>
+            )}
 
-        {errorMessage && (
-          <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0" />
-            <span>{errorMessage}</span>
-          </div>
-        )}
+            <FormField label="Patient Identification">
+              <Input
+                type="text"
+                value={patientName}
+                onChange={(e) => setPatientName(e.target.value)}
+                placeholder="Enter patient full name..."
+              />
+            </FormField>
 
-        <div className="space-y-4">
-          <div>
-            <label className="text-xs text-slate-400 block mb-1 font-medium">Patient Name</label>
-            <input
-              type="text"
-              value={patientName}
-              onChange={(e) => setPatientName(e.target.value)}
-              className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
-              placeholder="Enter patient full name"
+            <FormField label="Medical Scan File (DICOM / Image)">
+              {!previewUrl ? (
+                <label className="border-2 border-dashed border-slate-800 hover:border-cyan-500/40 bg-[#0b0f19] rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all group">
+                  <div className="w-12 h-12 rounded-xl bg-slate-800/80 group-hover:bg-cyan-500/10 text-slate-400 group-hover:text-cyan-400 flex items-center justify-center mb-3 transition-colors">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-200">Click or drag scan to upload</span>
+                  <span className="text-[10px] text-slate-500 font-mono mt-1">Supports PNG, JPG, JPEG</span>
+                  <input type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                </label>
+              ) : (
+                <div className="relative bg-[#0b0f19] border border-slate-800 rounded-2xl p-3 flex flex-col items-center overflow-hidden">
+                  <img src={previewUrl} alt="Scan Preview" className="max-h-64 rounded-xl object-contain" />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-4 right-4 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all shadow-md"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Remove
+                  </button>
+                </div>
+              )}
+            </FormField>
+
+            <Button
+              onClick={handleRunAnalysis}
+              disabled={!selectedFile}
+              loading={loading}
+              icon={Cpu}
+              className="w-full"
+            >
+              {loading ? 'Evaluating Radiographic Features...' : 'Execute Neural AI Diagnostic Scan'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Right Column: Radiologic Diagnostic Report */}
+        <Card className="lg:col-span-7 flex flex-col justify-center">
+          {!analysisResult ? (
+            <EmptyState
+              icon={FileImage}
+              title="Awaiting Radiologic Scan"
+              description="Upload a patient medical scan on the left and trigger the neural diagnostic engine to generate findings."
             />
-          </div>
+          ) : (
+            <CardContent className="space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-[#0b0f19] border border-slate-800">
+                <div>
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
+                    Diagnostic Modality
+                  </span>
+                  <div className="text-sm font-bold text-slate-100 mt-0.5">{currentModule.name}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={analysisResult.status_level === 'HIGH_RISK' ? 'danger' : 'success'}
+                    size="lg"
+                    dot
+                  >
+                    {analysisResult.status_level || 'EVALUATED'}
+                  </Badge>
+                  {analysisResult.confidence && (
+                    <Badge variant="info" size="lg">
+                      {analysisResult.confidence}% Conf.
+                    </Badge>
+                  )}
+                </div>
+              </div>
 
-          <div>
-            <label className="text-xs text-slate-400 block mb-1 font-medium">Upload Scan File</label>
-            {!previewUrl ? (
-              <label className="border-2 border-dashed border-slate-800 hover:border-cyan-500/50 bg-[#0b0f19] rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer transition-all">
-                <Upload className="w-8 h-8 text-slate-500 mb-2" />
-                <span className="text-xs font-semibold text-slate-300">Click to upload medical image</span>
-                <span className="text-[10px] text-slate-500 mt-1">Supports JPG, PNG</span>
-                <input type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
-              </label>
-            ) : (
-              <div className="relative bg-[#0b0f19] border border-slate-800 rounded-2xl p-3 flex flex-col items-center">
-                <img src={previewUrl} alt="Scan Preview" className="max-h-64 rounded-xl object-contain mb-3" />
-                <button
-                  onClick={handleRemoveImage}
-                  className="absolute top-4 right-4 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
+              {analysisResult.annotated_image && (
+                <div className="bg-[#090d16] p-3 rounded-2xl border border-slate-800/80 flex flex-col items-center">
+                  <div className="text-[10px] text-slate-500 font-mono mb-2 self-start uppercase tracking-wider">
+                    Computer Vision Feature Map
+                  </div>
+                  <img
+                    src={analysisResult.annotated_image}
+                    alt="Neural Detection"
+                    className="max-h-72 rounded-xl object-contain shadow-md"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-3 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
+                <div className="text-xs font-semibold text-cyan-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                  <span>Primary Finding: {analysisResult.diagnosis || 'Evaluation completed.'}</span>
+                </div>
+                <div className="space-y-1.5 pl-6 border-l-2 border-slate-800">
+                  {(analysisResult.details || ['No pathological abnormalities detected in scanned region.']).map((d, i) => (
+                    <p key={i} className="text-xs text-slate-300 leading-relaxed">{d}</p>
+                  ))}
+                </div>
+              </div>
+
+              {currentUser && (
+                <Button
+                  onClick={handleSaveToRecord}
+                  disabled={savedSuccess}
+                  variant={savedSuccess ? 'successOutline' : 'secondary'}
+                  icon={savedSuccess ? CheckCircle2 : Save}
+                  className="w-full"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Remove
-                </button>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={handleRunAnalysis}
-            disabled={loading || !selectedFile}
-            className={`w-full py-3.5 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 transition-all ${
-              loading || !selectedFile
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-900/20'
-            }`}
-          >
-            <Cpu className="w-4 h-4" />
-            {loading ? 'Analyzing Scan with Neural Engine...' : 'Execute AI Diagnostic Scan'}
-          </button>
-        </div>
-
-        {analysisResult && (
-          <div className="mt-6 bg-[#0b0f19] border border-slate-800 rounded-2xl p-5 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-slate-200">AI Diagnostic Report</h3>
-              <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${
-                analysisResult.status_level === 'HIGH_RISK' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'
-              }`}>
-                {analysisResult.status_level || 'LOW_RISK'} ({analysisResult.confidence || 90}% Confidence)
-              </span>
-            </div>
-
-            {analysisResult.annotated_image && (
-              <div className="flex justify-center bg-[#090d16] p-3 rounded-xl border border-slate-800">
-                <img src={analysisResult.annotated_image} alt="Detection Bounding Boxes" className="max-h-72 rounded-lg object-contain" />
-              </div>
-            )}
-
-            <div className="space-y-2 text-xs text-slate-300">
-              <p className="font-semibold text-cyan-400">{analysisResult.diagnosis || 'Scan evaluated successfully.'}</p>
-              <ul className="list-disc pl-4 space-y-1 text-slate-400">
-                {(analysisResult.details || ['No abnormal findings identified.']).map((d, i) => (
-                  <li key={i}>{d}</li>
-                ))}
-              </ul>
-            </div>
-
-            {currentUser?.role === 'patient' && (
-              <button
-                onClick={handleSaveToRecord}
-                disabled={savedSuccess}
-                className={`w-full py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
-                  savedSuccess
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                }`}
-              >
-                {savedSuccess ? (
-                  <>
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Saved to Medical Record
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4" /> Save Evaluation to Patient EHR
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        )}
+                  {savedSuccess ? 'Saved to Patient Medical Record (EHR)' : 'Save Evaluation to Patient EHR'}
+                </Button>
+              )}
+            </CardContent>
+          )}
+        </Card>
       </div>
     </div>
   );

@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Bone, Brain, Activity, Eye, ActivitySquare, Disc, Camera, Video, UploadCloud, Save } from 'lucide-react';
+import { Bone, Brain, Activity, Eye, ActivitySquare, Disc, Camera, Video, UploadCloud, Save, ShieldCheck, Sliders } from 'lucide-react';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
+import { FormField } from './ui/Input';
+import EmptyState from './ui/EmptyState';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -37,7 +42,7 @@ export default function NeurologyDashboard({ currentUser }) {
         videoRef.current.play();
       }
       setIsCameraActive(true);
-    } catch (err) {
+    } catch {
       alert('Camera access denied. Please grant permission in your browser.');
     }
   };
@@ -108,7 +113,7 @@ export default function NeurologyDashboard({ currentUser }) {
           try {
             const res = await axios.post(`${API_BASE_URL}/api/neurology/vision-exam-file`, formData);
             setResult(res.data);
-          } catch (err) {
+          } catch {
             alert('Failed to analyze camera frame.');
           } finally {
             setLoading(false);
@@ -167,214 +172,319 @@ export default function NeurologyDashboard({ currentUser }) {
     }
   };
 
+  const subtabs = [
+    { id: 'tumor', label: 'Tumor U-Net', icon: Brain },
+    { id: 'alzheimer', label: 'Alzheimer', icon: Disc },
+    { id: 'eeg', label: 'EEG Signals', icon: Activity },
+    { id: 'vision', label: 'Vision Exam', icon: Eye },
+    { id: 'parkinson', label: 'Parkinson', icon: ActivitySquare },
+    { id: 'spine', label: 'Spine MRI', icon: Bone },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Module Navigation Header */}
-      <div className="grid grid-cols-2 md:grid-cols-6 bg-[#111827] p-1.5 rounded-2xl border border-slate-800 gap-2">
-        <button onClick={() => resetState('tumor')} className={`py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeSubTab === 'tumor' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-          <Brain className="w-3.5 h-3.5" /> Brain Tumor U-Net
-        </button>
-        <button onClick={() => resetState('alzheimer')} className={`py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeSubTab === 'alzheimer' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-          <Disc className="w-3.5 h-3.5" /> Alzheimer
-        </button>
-        <button onClick={() => resetState('eeg')} className={`py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeSubTab === 'eeg' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-          <Activity className="w-3.5 h-3.5" /> EEG Signals
-        </button>
-        <button onClick={() => resetState('vision')} className={`py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeSubTab === 'vision' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-          <Eye className="w-3.5 h-3.5" /> Vision Exam
-        </button>
-        <button onClick={() => resetState('parkinson')} className={`py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeSubTab === 'parkinson' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-          <ActivitySquare className="w-3.5 h-3.5" /> Parkinson ResNet
-        </button>
-        <button onClick={() => resetState('spine')} className={`py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${activeSubTab === 'spine' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-          <Bone className="w-3.5 h-3.5" /> Spine MRI
-        </button>
+      {/* Module Sub-navigation */}
+      <div className="flex flex-wrap gap-2 p-1.5 bg-[#0f172a] rounded-2xl border border-slate-800">
+        {subtabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeSubTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => resetState(tab.id)}
+              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                isActive
+                  ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Panel: Inputs */}
-        <div className="lg:col-span-5 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-          <h3 className="text-sm font-semibold text-cyan-400 uppercase tracking-wider">
-            {activeSubTab === 'tumor' && 'Brain MRI Tumor Analysis (U-Net)'}
-            {activeSubTab === 'alzheimer' && 'Alzheimer MRI Scan Input'}
-            {activeSubTab === 'eeg' && 'EEG Signal Simulation'}
-            {activeSubTab === 'vision' && 'Vision & Ocular Movement Exam'}
-            {activeSubTab === 'parkinson' && 'Parkinson Spiral Drawing Scan'}
-            {activeSubTab === 'spine' && 'Lumbar Spine MRI Scan Input'}
-          </h3>
-
-          {['tumor', 'alzheimer', 'parkinson', 'spine'].includes(activeSubTab) && (
-            <div className="space-y-4">
-              <div className="border-2 border-dashed border-slate-800 rounded-2xl p-6 text-center bg-[#0b0f19]">
-                {previewUrl ? (
-                  <img src={previewUrl} alt="Preview" className="max-h-48 mx-auto rounded-xl border border-slate-700" />
-                ) : (
-                  <div className="space-y-2">
-                    <UploadCloud className="w-8 h-8 text-slate-600 mx-auto" />
-                    <p className="text-xs text-slate-500">Upload Image File (DICOM / PNG / JPEG)</p>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    if (e.target.files[0]) {
-                      setSelectedFile(e.target.files[0]);
-                      setPreviewUrl(URL.createObjectURL(e.target.files[0]));
-                    }
-                  }}
-                  className="mt-4 text-xs text-slate-400 block w-full"
-                />
-              </div>
-              <button
-                onClick={() => handleFileUploadAndAnalyze(
-                  activeSubTab === 'tumor' ? 'brain-tumor' : 
-                  activeSubTab === 'parkinson' ? 'parkinsons' : activeSubTab
-                )}
-                disabled={loading}
-                className="w-full bg-cyan-600 hover:bg-cyan-500 font-semibold text-xs py-3 rounded-xl transition-all disabled:opacity-50"
-              >
-                {loading ? 'Analyzing Neural Scan...' : 'Run AI Diagnostic Evaluation'}
-              </button>
+        {/* Left Column: Clinical Input Console */}
+        <Card className="lg:col-span-5">
+          <CardHeader>
+            <div>
+              <CardTitle icon={Brain}>Neurological Data Ingestion</CardTitle>
+              <CardDescription>
+                {activeSubTab === 'tumor' && 'Brain MRI Tumor Segmentation (U-Net Deep Learning)'}
+                {activeSubTab === 'alzheimer' && 'Alzheimer Structural MRI Diagnostic Scan'}
+                {activeSubTab === 'eeg' && 'EEG Micro-voltage Neural Telemetry Signal Analyzer'}
+                {activeSubTab === 'vision' && 'Ocular Motor Tracking & Cranial Nerve Vision Assessment'}
+                {activeSubTab === 'parkinson' && 'Kinematic Spiral Movement Feature Extractor'}
+                {activeSubTab === 'spine' && 'Lumbar Spine Neuro-compression Assessment'}
+              </CardDescription>
             </div>
-          )}
-
-          {activeSubTab === 'eeg' && (
-            <div className="space-y-4">
-              <p className="text-xs text-slate-400">Simulate 178-point EEG brain wave input for classification.</p>
-              <button onClick={() => handleEegAnalyze(false)} disabled={loading} className="w-full bg-slate-800 hover:bg-slate-700 text-xs py-3 rounded-xl text-slate-200">
-                Test Normal Brain Waves
-              </button>
-              <button onClick={() => handleEegAnalyze(true)} disabled={loading} className="w-full bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 text-xs py-3 rounded-xl">
-                Test Epileptic Seizure Waves
-              </button>
-            </div>
-          )}
-
-          {activeSubTab === 'vision' && (
-            <div className="space-y-4">
-              <div className="flex bg-[#0b0f19] p-1 rounded-xl border border-slate-800 gap-1 text-xs">
-                <button onClick={() => { setVisionMode('camera'); startCamera(); }} className={`flex-1 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 ${visionMode === 'camera' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-                  <Camera className="w-3.5 h-3.5" /> Live Camera
-                </button>
-                <button onClick={() => { setVisionMode('video'); stopCamera(); }} className={`flex-1 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 ${visionMode === 'video' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-                  <Video className="w-3.5 h-3.5" /> Upload Video
-                </button>
-                <button onClick={() => { setVisionMode('sliders'); stopCamera(); }} className={`flex-1 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 ${visionMode === 'sliders' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-                  Manual Adjust
-                </button>
-              </div>
-
-              {visionMode === 'camera' && (
-                <div className="space-y-3">
-                  <div className="relative rounded-2xl overflow-hidden bg-black border border-slate-800 aspect-video flex items-center justify-center">
-                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
-                    {!isCameraActive && (
-                      <button onClick={startCamera} className="absolute bg-cyan-600 text-white text-xs px-4 py-2 rounded-xl flex items-center gap-2">
-                        <Camera className="w-4 h-4" /> Start Camera
-                      </button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {['tumor', 'alzheimer', 'parkinson', 'spine'].includes(activeSubTab) && (
+              <div className="space-y-4">
+                <FormField label="Scan Ingestion File">
+                  <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/40 rounded-2xl p-6 text-center bg-[#0b0f19] transition-all">
+                    {previewUrl ? (
+                      <div className="relative inline-block">
+                        <img src={previewUrl} alt="Scan Preview" className="max-h-48 mx-auto rounded-xl object-contain border border-slate-700" />
+                        <button
+                          onClick={() => { setSelectedFile(null); setPreviewUrl(null); }}
+                          className="mt-2 text-[11px] text-rose-400 hover:underline block mx-auto"
+                        >
+                          Clear image
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer block">
+                        <UploadCloud className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                        <p className="text-xs font-semibold text-slate-200">Upload Neurological Scan</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Supports PNG, JPG, DICOM preview</p>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            if (e.target.files[0]) {
+                              setSelectedFile(e.target.files[0]);
+                              setPreviewUrl(URL.createObjectURL(e.target.files[0]));
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
                     )}
                   </div>
-                  <canvas ref={canvasRef} className="hidden" />
-                </div>
-              )}
+                </FormField>
 
-              {visionMode === 'video' && (
-                <div className="border-2 border-dashed border-slate-800 rounded-2xl p-6 text-center bg-[#0b0f19]">
-                  <p className="text-xs text-slate-400 mb-2">Upload facial & ocular movement video (.mp4 / .webm)</p>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={(e) => {
-                      if (e.target.files[0]) setSelectedFile(e.target.files[0]);
-                    }}
-                    className="text-xs text-slate-400 block w-full"
-                  />
-                </div>
-              )}
+                <Button
+                  onClick={() => handleFileUploadAndAnalyze(
+                    activeSubTab === 'tumor' ? 'brain-tumor' : 
+                    activeSubTab === 'parkinson' ? 'parkinsons' : activeSubTab
+                  )}
+                  disabled={!selectedFile}
+                  loading={loading}
+                  icon={Brain}
+                  className="w-full"
+                >
+                  {loading ? 'Evaluating Neural Model...' : 'Execute Neurological AI Analysis'}
+                </Button>
+              </div>
+            )}
 
-              {visionMode === 'sliders' && (
-                <div className="space-y-3 bg-[#0b0f19] p-4 rounded-xl border border-slate-800">
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Facial Asymmetry Ratio: {asymmetry}</label>
-                    <input type="range" min="0.0" max="0.4" step="0.01" value={asymmetry} onChange={e => setAsymmetry(parseFloat(e.target.value))} className="w-full" />
+            {activeSubTab === 'eeg' && (
+              <div className="space-y-3">
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Stream 178-point EEG cerebral microvoltage waveform vectors into the seizure classification pipeline:
+                </p>
+                <Button
+                  onClick={() => handleEegAnalyze(false)}
+                  disabled={loading}
+                  variant="secondary"
+                  icon={Activity}
+                  className="w-full"
+                >
+                  Simulate Normal Brain Wave Vector
+                </Button>
+                <Button
+                  onClick={() => handleEegAnalyze(true)}
+                  disabled={loading}
+                  variant="dangerOutline"
+                  icon={Activity}
+                  className="w-full"
+                >
+                  Simulate Ictal / Seizure Wave Vector
+                </Button>
+              </div>
+            )}
+
+            {activeSubTab === 'vision' && (
+              <div className="space-y-4">
+                <div className="flex bg-[#0b0f19] p-1 rounded-xl border border-slate-800 gap-1 text-xs">
+                  <button
+                    onClick={() => { setVisionMode('camera'); startCamera(); }}
+                    className={`flex-1 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-all ${
+                      visionMode === 'camera' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Live Camera
+                  </button>
+                  <button
+                    onClick={() => { setVisionMode('video'); stopCamera(); }}
+                    className={`flex-1 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-all ${
+                      visionMode === 'video' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Video className="w-3.5 h-3.5" /> Video File
+                  </button>
+                  <button
+                    onClick={() => { setVisionMode('sliders'); stopCamera(); }}
+                    className={`flex-1 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-all ${
+                      visionMode === 'sliders' ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Sliders className="w-3.5 h-3.5" /> Metrics
+                  </button>
+                </div>
+
+                {visionMode === 'camera' && (
+                  <div className="space-y-3">
+                    <div className="relative rounded-2xl overflow-hidden bg-black border border-slate-800 aspect-video flex items-center justify-center">
+                      <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+                      {!isCameraActive && (
+                        <Button onClick={startCamera} icon={Camera} size="sm" className="absolute">
+                          Activate Ocular Camera
+                        </Button>
+                      )}
+                    </div>
+                    <canvas ref={canvasRef} className="hidden" />
                   </div>
-                  <div>
-                    <label className="text-xs text-slate-400 block mb-1">Motor Tremor Variance: {tremor}</label>
-                    <input type="range" min="0.1" max="25.0" step="0.5" value={tremor} onChange={e => setTremor(parseFloat(e.target.value))} className="w-full" />
+                )}
+
+                {visionMode === 'video' && (
+                  <div className="border-2 border-dashed border-slate-800 rounded-2xl p-6 text-center bg-[#0b0f19]">
+                    <Video className="w-8 h-8 text-slate-500 mx-auto mb-2" />
+                    <p className="text-xs text-slate-400 mb-2">Upload facial & ocular tracking video</p>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      onChange={(e) => {
+                        if (e.target.files[0]) setSelectedFile(e.target.files[0]);
+                      }}
+                      className="text-xs text-slate-400 block w-full mx-auto"
+                    />
                   </div>
-                </div>
-              )}
+                )}
 
-              <button onClick={handleVisionAnalyze} disabled={loading} className="w-full bg-cyan-600 hover:bg-cyan-500 font-semibold text-xs py-3 rounded-xl transition-all">
-                {loading ? 'Analyzing...' : 'Run AI Vision Assessment'}
-              </button>
-            </div>
-          )}
-        </div>
+                {visionMode === 'sliders' && (
+                  <div className="space-y-3 bg-[#0b0f19] p-4 rounded-xl border border-slate-800 text-xs">
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-1">
+                        <span>Facial Asymmetry Ratio</span>
+                        <span className="font-mono text-cyan-400 font-semibold">{asymmetry}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.0"
+                        max="0.4"
+                        step="0.01"
+                        value={asymmetry}
+                        onChange={e => setAsymmetry(parseFloat(e.target.value))}
+                        className="w-full accent-cyan-500"
+                      />
+                    </div>
+                    <div>
+                      <div className="flex justify-between text-slate-400 mb-1">
+                        <span>Motor Tremor Variance</span>
+                        <span className="font-mono text-cyan-400 font-semibold">{tremor} Hz</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0.1"
+                        max="25.0"
+                        step="0.5"
+                        value={tremor}
+                        onChange={e => setTremor(parseFloat(e.target.value))}
+                        className="w-full accent-cyan-500"
+                      />
+                    </div>
+                  </div>
+                )}
 
-        {/* Right Panel: AI Results & Segmentation Data */}
-        <div className="lg:col-span-7 bg-[#111827] p-6 rounded-2xl border border-slate-800">
-          <h3 className="text-sm font-semibold text-slate-200 mb-4">Diagnostic Results & AI Report</h3>
+                <Button
+                  onClick={handleVisionAnalyze}
+                  loading={loading}
+                  icon={Eye}
+                  className="w-full"
+                >
+                  {loading ? 'Processing Vision Model...' : 'Run Cranial Vision Assessment'}
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {result ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-[#0b0f19] rounded-xl border border-cyan-500/30 flex justify-between items-center">
+        {/* Right Column: Neurological Assessment Findings */}
+        <Card className="lg:col-span-7 flex flex-col justify-center">
+          {!result ? (
+            <EmptyState
+              icon={Brain}
+              title="Awaiting Neurological Ingestion"
+              description="Select a modality on the left and submit scan or telemetry data to execute AI model evaluation."
+            />
+          ) : (
+            <CardContent className="space-y-5">
+              <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                  <span className="text-xs text-slate-400 block">Primary Diagnostic Finding:</span>
-                  <h4 className="text-lg font-bold text-cyan-400">{result.diagnosis}</h4>
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
+                    Primary Neurological Diagnosis
+                  </span>
+                  <div className="text-base font-bold text-cyan-400 mt-0.5">{result.diagnosis}</div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs text-slate-400 block">AI Confidence Score:</span>
-                  <div className="text-lg font-mono font-bold text-emerald-400">{result.confidence}%</div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={Number(result.confidence) > 50 ? 'danger' : 'success'} size="lg" dot>
+                    {Number(result.confidence) > 50 ? 'Pathology Detected' : 'Normal / Low Risk'}
+                  </Badge>
+                  <Badge variant="info" size="lg">
+                    {result.confidence}% Conf.
+                  </Badge>
                 </div>
               </div>
 
               {/* U-Net Tumor Segmentation Info */}
               {result.tumor_area_percentage !== undefined && (
-                <div className="p-4 bg-[#0b0f19] rounded-xl border border-slate-800 space-y-2">
-                  <span className="text-xs text-slate-400 font-semibold block">U-Net Tumor Segmentation Coverage:</span>
+                <div className="p-4 bg-[#0b0f19] rounded-2xl border border-slate-800 space-y-2">
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-300">Tumor Area / Total Brain Volume:</span>
-                    <span className="font-mono text-cyan-400 font-bold">{result.tumor_area_percentage}%</span>
+                    <span className="text-slate-400 font-medium">U-Net Tumor Area Coverage</span>
+                    <span className="font-mono text-rose-400 font-bold">{result.tumor_area_percentage}%</span>
                   </div>
-                  <div className="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden">
-                    <div className="bg-rose-500 h-full" style={{ width: `${Math.min(100, result.tumor_area_percentage * 3)}%` }}></div>
+                  <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="bg-gradient-to-r from-amber-500 to-rose-500 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, Math.max(5, result.tumor_area_percentage * 3))}%` }}
+                    />
                   </div>
+                  <span className="text-[10px] text-slate-500 block">Relative voxel ratio over total cranial volume</span>
                 </div>
               )}
 
               {/* Probabilities Breakdown */}
               {result.probabilities && (
-                <div className="space-y-2.5 mt-4 bg-[#0b0f19] p-4 rounded-xl border border-slate-800">
-                  <span className="text-xs text-slate-400 font-semibold block">Differential Class Distribution:</span>
+                <div className="space-y-2.5 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-300 mb-2">
+                    <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                    <span>Differential Probability Distribution</span>
+                  </div>
                   {Object.entries(result.probabilities).map(([cls, prob]) => (
                     <div key={cls} className="space-y-1">
                       <div className="flex justify-between text-xs text-slate-400">
-                        <span>{cls}</span>
-                        <span className="font-mono font-semibold">{prob}%</span>
+                        <span className="font-medium">{cls}</span>
+                        <span className="font-mono text-slate-300 font-semibold">{prob}%</span>
                       </div>
-                      <div className="w-full bg-slate-900 h-2 rounded-full overflow-hidden">
-                        <div className="bg-cyan-500 h-full" style={{ width: `${prob}%` }}></div>
+                      <div className="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-cyan-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${prob}%` }}
+                        />
                       </div>
                     </div>
                   ))}
                 </div>
               )}
 
-              <button
-                onClick={handleSaveToEHR}
-                className="w-full mt-3 bg-slate-800 hover:bg-cyan-600 text-slate-200 border border-slate-700 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all"
-              >
-                <Save className="w-4 h-4 text-cyan-400" /> Save Evaluation to EHR System
-              </button>
-            </div>
-          ) : (
-            <div className="text-center text-slate-500 py-20 text-xs">
-              Select a diagnostic module on the left and submit data to view model inferences.
-            </div>
+              {currentUser && (
+                <Button
+                  onClick={handleSaveToEHR}
+                  variant="secondary"
+                  icon={Save}
+                  className="w-full"
+                >
+                  Save Neurological Assessment to Patient EHR
+                </Button>
+              )}
+            </CardContent>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

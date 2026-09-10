@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Heart, Activity, Upload, CheckCircle2, FileText, RefreshCw, Sliders, Image as ImageIcon, User, AlertCircle } from 'lucide-react';
+import { Heart, Activity, Upload, CheckCircle2, FileText, Sliders, Image as ImageIcon, User, AlertCircle, Cpu, ShieldCheck } from 'lucide-react';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
+import { FormField, Input, Select } from './ui/Input';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -59,7 +63,6 @@ export default function EcgDashboard({ currentUser }) {
         setTimeout(() => {
           const hr = parseFloat(clinicalParams.heartRate) || 75;
           const qrs = parseFloat(clinicalParams.qrsDuration) || 90;
-          const qt = parseFloat(clinicalParams.qtInterval) || 400;
           const st = parseFloat(clinicalParams.stSegment) || 0;
           const pr = parseFloat(clinicalParams.prInterval) || 160;
 
@@ -107,7 +110,7 @@ export default function EcgDashboard({ currentUser }) {
             details: findings
           });
           setLoading(false);
-        }, 600);
+        }, 500);
 
       } else {
         // --- Real Backend Integration for Image Vision Model ---
@@ -124,8 +127,8 @@ export default function EcgDashboard({ currentUser }) {
           headers: { "Content-Type": "multipart/form-data" }
         });
 
-        const { prediction, all_probabilities } = response.data;
-        const className = prediction.class_name; // 'AHB', 'COVID-19', 'HMI', 'MI', 'Normal'
+        const { prediction } = response.data;
+        const className = prediction.class_name;
         const confidence = prediction.confidence;
         const isNormal = className === 'Normal';
 
@@ -162,7 +165,7 @@ export default function EcgDashboard({ currentUser }) {
       }
     } catch (err) {
       console.error("AI Evaluation failed", err);
-      alert(err.response?.data?.detail || "Failed to connect to ECG Vision AI backend server. Make sure FastAPI server is running.");
+      alert(err.response?.data?.detail || "Failed to connect to ECG Vision AI backend server.");
       setLoading(false);
     }
   };
@@ -185,241 +188,249 @@ export default function EcgDashboard({ currentUser }) {
 
   return (
     <div className="space-y-6">
-      {/* Top Switcher Bar */}
-      <div className="bg-[#111827] p-2 rounded-2xl border border-slate-800 flex items-center justify-between">
-        <div className="flex items-center gap-2 px-3">
-          <Activity className="w-5 h-5 text-cyan-400" />
-          <span className="text-sm font-bold text-slate-200">ECG Diagnostic Mode</span>
+      {/* Top Mode Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-2 bg-[#0f172a] rounded-2xl border border-slate-800">
+        <div className="flex items-center gap-2.5 px-3">
+          <Heart className="w-5 h-5 text-rose-400" />
+          <div>
+            <span className="text-xs font-bold text-slate-100 block">ECG Electrophysiology AI</span>
+            <span className="text-[10px] text-slate-400">Cardiovascular rhythm & infarction detection</span>
+          </div>
         </div>
 
         <div className="flex bg-[#0b0f19] p-1 rounded-xl border border-slate-800 text-xs">
           <button
             onClick={() => setAnalysisMode('values')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all ${
-              analysisMode === 'values' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${
+              analysisMode === 'values' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Sliders className="w-4 h-4" />
-            Detailed Clinical Values
+            <Sliders className="w-3.5 h-3.5" />
+            Clinical Values
           </button>
           <button
             onClick={() => setAnalysisMode('image')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold transition-all ${
-              analysisMode === 'image' ? 'bg-cyan-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${
+              analysisMode === 'image' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <ImageIcon className="w-4 h-4" />
-            ECG Strip Image Scan
+            <ImageIcon className="w-3.5 h-3.5" />
+            ECG Lead Vision Scan
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Panel: Input Section */}
-        <div className="lg:col-span-6 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-            <span className="text-xs font-semibold text-cyan-400">
-              {analysisMode === 'values' ? 'Detailed Diagnostic Parameters' : 'ECG Image Waveform Upload'}
-            </span>
-            <span className="text-[10px] text-slate-400 bg-slate-900 px-2.5 py-1 rounded-full border border-slate-800 font-mono">
-              {analysisMode === 'values' ? 'Multi-Feature Input' : 'Vision ResNet18 AI'}
-            </span>
-          </div>
-
-          {/* Patient Details (Name, Age, Gender) */}
-          <div className="space-y-3 bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800">
+        {/* Left Column: Data Ingestion */}
+        <Card className="lg:col-span-6">
+          <CardHeader>
             <div>
-              <label className="text-[11px] text-slate-400 block mb-1">Patient Full Name</label>
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Enter patient name..."
+              <CardTitle icon={Activity}>
+                {analysisMode === 'values' ? 'Cardiac Interval Parameters' : 'ECG Strip Waveform Scanner'}
+              </CardTitle>
+              <CardDescription>
+                {analysisMode === 'values' ? 'Electrophysiological interval telemetry' : 'Convolutional ResNet18 neural trace classifier'}
+              </CardDescription>
+            </div>
+            <Badge variant="info" size="sm" dot>Engine Ready</Badge>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Patient Details */}
+            <div className="space-y-3 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
+              <FormField label="Patient Identification">
+                <Input
+                  icon={User}
+                  placeholder="Patient full name..."
                   value={clinicalParams.patientName}
                   onChange={(e) => handleInputChange('patientName', e.target.value)}
-                  className="w-full bg-[#111827] border border-slate-800 focus:border-cyan-500 text-slate-100 rounded-lg pl-8 pr-3 py-2 text-xs outline-none transition-all"
                 />
-                <User className="w-4 h-4 text-slate-500 absolute left-2.5 top-2.5" />
+              </FormField>
+
+              <div className="grid grid-cols-2 gap-3">
+                <FormField label="Patient Age">
+                  <Input
+                    type="number"
+                    value={clinicalParams.age}
+                    onChange={(e) => handleInputChange('age', e.target.value)}
+                  />
+                </FormField>
+                <FormField label="Biological Gender">
+                  <Select
+                    value={clinicalParams.gender}
+                    onChange={(e) => handleInputChange('gender', e.target.value)}
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </Select>
+                </FormField>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Patient Age</label>
-                <input
-                  type="number"
-                  value={clinicalParams.age}
-                  onChange={(e) => handleInputChange('age', e.target.value)}
-                  className="w-full bg-[#111827] border border-slate-800 focus:border-cyan-500 text-slate-100 rounded-lg p-2 text-xs font-mono outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Gender</label>
-                <select
-                  value={clinicalParams.gender}
-                  onChange={(e) => handleInputChange('gender', e.target.value)}
-                  className="w-full bg-[#111827] border border-slate-800 focus:border-cyan-500 text-slate-100 rounded-lg p-2 text-xs outline-none"
-                >
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {analysisMode === 'values' ? (
-            /* Specific Cardiac Values */
-            <div className="space-y-3">
-              <span className="text-[11px] font-semibold text-slate-400 block">Signal Intervals & Amplitudes</span>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">Heart Rate (BPM)</label>
-                  <input
-                    type="number"
-                    value={clinicalParams.heartRate}
-                    onChange={(e) => handleInputChange('heartRate', e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-slate-800 focus:border-cyan-500 text-slate-100 rounded-lg p-2 text-xs font-mono outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">PR Interval (ms)</label>
-                  <input
-                    type="number"
-                    value={clinicalParams.prInterval}
-                    onChange={(e) => handleInputChange('prInterval', e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-slate-800 focus:border-cyan-500 text-slate-100 rounded-lg p-2 text-xs font-mono outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">QRS Duration (ms)</label>
-                  <input
-                    type="number"
-                    value={clinicalParams.qrsDuration}
-                    onChange={(e) => handleInputChange('qrsDuration', e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-slate-800 focus:border-cyan-500 text-slate-100 rounded-lg p-2 text-xs font-mono outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">QT / QTc (ms)</label>
-                  <input
-                    type="number"
-                    value={clinicalParams.qtInterval}
-                    onChange={(e) => handleInputChange('qtInterval', e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-slate-800 focus:border-cyan-500 text-slate-100 rounded-lg p-2 text-xs font-mono outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">ST Shift (mm)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={clinicalParams.stSegment}
-                    onChange={(e) => handleInputChange('stSegment', e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-slate-800 focus:border-cyan-500 text-slate-100 rounded-lg p-2 text-xs font-mono outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block mb-1">QRS Axis (°)</label>
-                  <input
-                    type="number"
-                    value={clinicalParams.qrsAxis}
-                    onChange={(e) => handleInputChange('qrsAxis', e.target.value)}
-                    className="w-full bg-[#0b0f19] border border-slate-800 focus:border-cyan-500 text-slate-100 rounded-lg p-2 text-xs font-mono outline-none"
-                  />
+            {analysisMode === 'values' ? (
+              <div className="space-y-3">
+                <span className="text-[11px] font-semibold text-slate-400 block font-mono uppercase tracking-wider">
+                  Cardiac Lead Measurements
+                </span>
+                <div className="grid grid-cols-3 gap-2.5">
+                  <FormField label="Heart Rate (BPM)" hint="Normal: 60-100">
+                    <Input
+                      type="number"
+                      value={clinicalParams.heartRate}
+                      onChange={(e) => handleInputChange('heartRate', e.target.value)}
+                    />
+                  </FormField>
+                  <FormField label="PR Interval (ms)" hint="Normal: 120-200">
+                    <Input
+                      type="number"
+                      value={clinicalParams.prInterval}
+                      onChange={(e) => handleInputChange('prInterval', e.target.value)}
+                    />
+                  </FormField>
+                  <FormField label="QRS Width (ms)" hint="Normal: 80-120">
+                    <Input
+                      type="number"
+                      value={clinicalParams.qrsDuration}
+                      onChange={(e) => handleInputChange('qrsDuration', e.target.value)}
+                    />
+                  </FormField>
+                  <FormField label="QT / QTc (ms)" hint="Normal: <440">
+                    <Input
+                      type="number"
+                      value={clinicalParams.qtInterval}
+                      onChange={(e) => handleInputChange('qtInterval', e.target.value)}
+                    />
+                  </FormField>
+                  <FormField label="ST Shift (mm)" hint="Normal: 0.0">
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={clinicalParams.stSegment}
+                      onChange={(e) => handleInputChange('stSegment', e.target.value)}
+                    />
+                  </FormField>
+                  <FormField label="QRS Axis (°)" hint="Normal: -30 to 90">
+                    <Input
+                      type="number"
+                      value={clinicalParams.qrsAxis}
+                      onChange={(e) => handleInputChange('qrsAxis', e.target.value)}
+                    />
+                  </FormField>
                 </div>
               </div>
-            </div>
-          ) : (
-            /* Image Upload Mode */
-            <div className="relative border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-2xl p-6 text-center transition-all bg-[#0b0f19]">
-              {imagePreview ? (
-                <div className="relative group">
-                  <img src={imagePreview} alt="ECG Strip" className="max-h-52 mx-auto rounded-lg object-contain" />
-                  <label className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs text-cyan-400 font-medium cursor-pointer transition-all rounded-lg gap-2">
-                    <ImageIcon className="w-4 h-4" /> Change Image
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                  </label>
-                </div>
-              ) : (
-                <label className="cursor-pointer flex flex-col items-center justify-center py-6 space-y-2">
-                  <Upload className="w-10 h-10 text-cyan-400/80" />
-                  <span className="text-xs text-slate-200 font-medium">Upload ECG Waveform Image</span>
-                  <span className="text-[10px] text-slate-500">Supports standard paper ECG leads & DICOM scans</span>
-                  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-                </label>
-              )}
-            </div>
-          )}
-
-          <button
-            onClick={handleExecuteDiagnostic}
-            disabled={loading}
-            className="w-full bg-cyan-600 hover:bg-cyan-500 active:scale-[0.99] text-white font-semibold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-xs shadow-lg shadow-cyan-900/20"
-          >
-            {loading ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Executing AI Cardiac Diagnostic...
-              </>
             ) : (
-              <>
-                <Activity className="w-4 h-4" />
-                Execute Diagnostic ({analysisMode === 'values' ? 'Values Model' : 'Vision Model'})
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Right Panel: Diagnosis Output */}
-        <div className="lg:col-span-6 bg-[#111827] p-6 rounded-2xl border border-slate-800 flex flex-col justify-between space-y-6">
-          <div className="space-y-5">
-            <div className="flex items-center gap-2 text-rose-400 font-semibold border-b border-slate-800 pb-3">
-              <Heart className="w-5 h-5" />
-              <span>Cardiac AI Findings & Assessment</span>
-            </div>
-
-            <div className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 flex justify-between items-center">
-              <div>
-                <div className="text-[11px] text-slate-500 uppercase tracking-wider font-mono">Diagnosis Verdict</div>
-                <div className="text-lg font-bold text-slate-100 mt-0.5">{diagnosisResult.verdict}</div>
-                <div className="text-xs text-cyan-400 mt-1 font-mono">
-                  Abnormality Risk Score: <span className="font-bold">{diagnosisResult.score}%</span>
+              <FormField label="ECG Lead Trace File (Image)">
+                <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/40 rounded-2xl p-6 text-center bg-[#0b0f19] relative transition-all">
+                  {imagePreview ? (
+                    <div className="relative group">
+                      <img src={imagePreview} alt="ECG Strip" className="max-h-52 mx-auto rounded-xl object-contain border border-slate-700" />
+                      <label className="absolute inset-0 bg-black/75 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs text-cyan-400 font-medium cursor-pointer transition-all rounded-xl gap-2 backdrop-blur-sm">
+                        <ImageIcon className="w-4 h-4" /> Replace ECG Strip
+                        <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                      </label>
+                    </div>
+                  ) : (
+                    <label className="cursor-pointer flex flex-col items-center justify-center py-6 space-y-2">
+                      <div className="w-12 h-12 rounded-xl bg-slate-800/80 text-cyan-400 flex items-center justify-center mb-2">
+                        <Upload className="w-6 h-6" />
+                      </div>
+                      <span className="text-xs text-slate-200 font-semibold">Upload 12-Lead ECG Strip Image</span>
+                      <span className="text-[10px] text-slate-500 font-mono">Supports standard paper ECG scans, PNG, JPG</span>
+                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                    </label>
+                  )}
                 </div>
-              </div>
+              </FormField>
+            )}
 
-              <span className={`px-3 py-1 rounded-full text-xs font-bold font-mono ${
-                diagnosisResult.status === 'NORMAL' 
-                  ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
-                  : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
-              }`}>
-                {diagnosisResult.status}
-              </span>
+            <Button
+              onClick={handleExecuteDiagnostic}
+              loading={loading}
+              icon={Cpu}
+              className="w-full"
+            >
+              {loading ? 'Evaluating Cardiac Vector...' : `Execute ${analysisMode === 'values' ? 'Values-Based' : 'Vision-Based'} AI Diagnosis`}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Right Column: Diagnostic Output */}
+        <Card className="lg:col-span-6 flex flex-col justify-between">
+          <CardHeader>
+            <CardTitle icon={Heart}>Cardiac Electrophysiology Findings</CardTitle>
+            <Badge
+              variant={diagnosisResult.status === 'NORMAL' ? 'success' : 'danger'}
+              size="sm"
+              dot
+              pulse={diagnosisResult.status !== 'NORMAL'}
+            >
+              {diagnosisResult.status}
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
+                  Electrophysiological Verdict
+                </span>
+                <div className="text-base font-bold text-slate-100 mt-0.5">{diagnosisResult.verdict}</div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
+                  Risk / Abnormality Score
+                </span>
+                <span className="text-xl font-mono font-bold text-cyan-400">{diagnosisResult.score}%</span>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="text-xs font-semibold text-slate-400">Clinical Interpretation Details</div>
+            {/* Risk Indicator Meter */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                <span>Normal Sinus Rhythm</span>
+                <span>Arrhythmia / Ischemia Threshold</span>
+              </div>
+              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    diagnosisResult.status === 'NORMAL'
+                      ? 'bg-emerald-500'
+                      : 'bg-gradient-to-r from-amber-500 to-rose-500'
+                  }`}
+                  style={{ width: `${Math.max(8, diagnosisResult.score)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2.5 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                <span>Clinical Interpretation & Diagnostic Notes</span>
+              </div>
               <div className="space-y-2">
                 {diagnosisResult.details.map((detail, idx) => (
-                  <div key={idx} className="flex items-start gap-3 bg-[#0b0f19] p-3 rounded-xl border border-slate-800 text-xs text-slate-300">
+                  <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
                     {diagnosisResult.status === 'NORMAL' ? (
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     ) : (
                       <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                     )}
-                    <span>{detail}</span>
+                    <span className="leading-relaxed">{detail}</span>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
 
-          <button
-            onClick={handleSaveToEHR}
-            className="w-full bg-[#0b0f19] hover:bg-slate-800 text-slate-200 border border-slate-800 font-medium py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-xs"
-          >
-            <FileText className="w-4 h-4 text-cyan-400" />
-            Save Report to Patient EHR
-          </button>
-        </div>
+            {currentUser && (
+              <Button
+                onClick={handleSaveToEHR}
+                variant="secondary"
+                icon={FileText}
+                className="w-full"
+              >
+                Save Evaluation Report to Patient EHR
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

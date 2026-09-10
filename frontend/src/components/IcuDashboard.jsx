@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { HeartPulse } from 'lucide-react';
+import { HeartPulse, Activity, ShieldCheck, CheckCircle2, User } from 'lucide-react';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
+import { FormField, Input } from './ui/Input';
+import EmptyState from './ui/EmptyState';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export default function IcuDashboard({ currentUser }) {
-  // تفريغ اسم المريض عند دخول الطبيب وتعبئته تلقائياً فقط إذا كان المستخدم مريضاً
   const [formData, setFormData] = useState({
     patient_name: currentUser?.role === 'patient' ? currentUser?.full_name : '',
     patient_id: 'ICU-2026-01',
@@ -38,75 +42,152 @@ export default function IcuDashboard({ currentUser }) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <div className="lg:col-span-5 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-        <h2 className="text-base font-semibold flex items-center gap-2 text-cyan-400">
-          <HeartPulse className="w-5 h-5" /> ICU & Emergency AI Diagnostic Tool
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Parameter Input Console */}
+      <Card className="lg:col-span-5">
+        <CardHeader>
           <div>
-            <label className="text-xs text-slate-400 block mb-1">Patient Name</label>
-            <input 
-              type="text" 
-              placeholder="Enter patient full name..."
-              value={formData.patient_name} 
-              onChange={e => setFormData({...formData, patient_name: e.target.value})} 
-              className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500" 
-            />
+            <CardTitle icon={HeartPulse}>ICU & Critical Care Telemetry AI</CardTitle>
+            <CardDescription>Predictive hemodynamic and renal decompensation risk analyzer</CardDescription>
           </div>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FormField label="Patient Identification" required>
+              <Input
+                icon={User}
+                type="text"
+                placeholder="Patient full name..."
+                value={formData.patient_name}
+                onChange={e => setFormData({...formData, patient_name: e.target.value})}
+              />
+            </FormField>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-slate-400 block mb-1">Age</label>
-              <input type="number" value={formData.age} onChange={e => setFormData({...formData, age: Number(e.target.value)})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200" />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Age (Years)" required>
+                <Input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={formData.age}
+                  onChange={e => setFormData({...formData, age: Number(e.target.value)})}
+                />
+              </FormField>
+              <FormField label="Ejection Fraction (%)" hint="Target: 50-70%">
+                <Input
+                  type="number"
+                  min="5"
+                  max="85"
+                  value={formData.ejection_fraction}
+                  onChange={e => setFormData({...formData, ejection_fraction: Number(e.target.value)})}
+                />
+              </FormField>
             </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-1">Ejection Fraction (%)</label>
-              <input type="number" value={formData.ejection_fraction} onChange={e => setFormData({...formData, ejection_fraction: Number(e.target.value)})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200" />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-slate-400 block mb-1">Serum Creatinine</label>
-              <input type="number" step="0.1" value={formData.serum_creatinine} onChange={e => setFormData({...formData, serum_creatinine: Number(e.target.value)})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200" />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Serum Creatinine (mg/dL)" hint="Normal: 0.7 - 1.3">
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0.1"
+                  max="15.0"
+                  value={formData.serum_creatinine}
+                  onChange={e => setFormData({...formData, serum_creatinine: Number(e.target.value)})}
+                />
+              </FormField>
+              <FormField label="Serum Sodium (mEq/L)" hint="Normal: 135 - 145">
+                <Input
+                  type="number"
+                  min="100"
+                  max="180"
+                  value={formData.serum_sodium}
+                  onChange={e => setFormData({...formData, serum_sodium: Number(e.target.value)})}
+                />
+              </FormField>
             </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-1">Serum Sodium</label>
-              <input type="number" value={formData.serum_sodium} onChange={e => setFormData({...formData, serum_sodium: Number(e.target.value)})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200" />
-            </div>
-          </div>
 
-          <button type="submit" disabled={loading} className="w-full bg-cyan-600 hover:bg-cyan-500 font-semibold text-xs py-3 rounded-xl transition-all">
-            {loading ? 'Evaluating Model...' : 'Run Clinical Assessment & Save Record'}
-          </button>
-        </form>
-      </div>
+            <Button
+              type="submit"
+              loading={loading}
+              icon={Activity}
+              className="w-full mt-2"
+            >
+              {loading ? 'Evaluating Telemetry...' : 'Run ICU Risk Assessment & Save'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <div className="lg:col-span-7 bg-[#111827] p-6 rounded-2xl border border-slate-800 flex flex-col justify-center">
+      {/* Clinical Assessment Output */}
+      <Card className="lg:col-span-7 flex flex-col justify-center">
         {!result ? (
-          <div className="text-center text-slate-500 text-xs">Submit patient parameters to run emergency AI assessment.</div>
+          <EmptyState
+            icon={HeartPulse}
+            title="Awaiting Telemetry Data"
+            description="Enter patient vitals and laboratory biomarkers on the left to execute model inference."
+          />
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between bg-[#0b0f19] p-4 rounded-xl border border-slate-800">
+          <CardContent className="space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#0b0f19] border border-slate-800">
               <div>
-                <span className="text-xs text-slate-400 block">Calculated Risk Score</span>
-                <span className="text-2xl font-bold font-mono text-cyan-400">{result.risk_score}%</span>
+                <span className="text-[11px] uppercase tracking-wider text-slate-400 font-mono block">
+                  Calculated Decompensation Risk
+                </span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-3xl font-bold font-mono text-cyan-400">{result.risk_score}%</span>
+                  <span className="text-xs text-slate-500 font-mono">probabilistic score</span>
+                </div>
               </div>
-              <span className={`px-4 py-1.5 rounded-full text-xs font-bold ${result.status_level === 'HIGH' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'}`}>
-                {result.status_level}
-              </span>
+              <div>
+                <Badge
+                  variant={result.status_level === 'HIGH' ? 'danger' : 'success'}
+                  size="lg"
+                  dot
+                  pulse={result.status_level === 'HIGH'}
+                >
+                  Clinical Status: {result.status_level}
+                </Badge>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <span className="text-xs font-semibold text-slate-400 block">AI Diagnostic Protocol Notes:</span>
-              {result.details.map((d, i) => (
-                <div key={i} className="text-xs bg-[#0b0f19] p-3 rounded-xl border border-slate-800/80 text-slate-300">{d}</div>
-              ))}
+            {/* Risk Gauge Bar */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[11px] font-mono text-slate-400">
+                <span>Low Acuity</span>
+                <span>Moderate</span>
+                <span>High Decompensation</span>
+              </div>
+              <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden flex">
+                <div
+                  className={`transition-all duration-500 rounded-full ${
+                    result.status_level === 'HIGH'
+                      ? 'bg-gradient-to-r from-amber-500 to-rose-500'
+                      : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${Math.min(Math.max(result.risk_score, 5), 100)}%` }}
+                />
+              </div>
             </div>
-          </div>
+
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
+                <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                <span>Diagnostic Protocol & Biomarker Analysis</span>
+              </div>
+              <div className="space-y-2">
+                {result.details.map((d, i) => (
+                  <div
+                    key={i}
+                    className="text-xs bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800/80 text-slate-300 leading-relaxed flex items-start gap-2.5"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    <span>{d}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

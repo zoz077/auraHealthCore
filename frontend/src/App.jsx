@@ -1,12 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Activity, Calendar, ShieldCheck, LogOut, FileText, Stethoscope, Bell, Printer, AlertTriangle, User, Users, Eye, PlusCircle, X, Check, Clock } from 'lucide-react';
+import { 
+  Calendar, 
+  ShieldCheck, 
+  LogOut, 
+  FileText, 
+  Stethoscope, 
+  Bell, 
+  Printer, 
+  AlertTriangle, 
+  User, 
+  Users, 
+  Eye, 
+  PlusCircle, 
+  X, 
+  Check, 
+  Clock, 
+  HeartPulse, 
+  Heart,
+  Brain,
+  Wind,
+  Layers,
+  Lock,
+  Mail,
+  ChevronRight
+} from 'lucide-react';
 import IcuDashboard from './components/IcuDashboard';
 import ImagingDashboard from './components/ImagingDashboard';
 import EcgDashboard from './components/EcgDashboard';
 import RespiratoryDashboard from './components/RespiratoryDashboard';
 import NotificationToast from './components/NotificationToast';
 import NeurologyDashboard from './components/NeurologyDashboard';
+
+// Design System UI Components
+import Button from './components/ui/Button';
+import Badge from './components/ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './components/ui/Card';
+import Modal from './components/ui/Modal';
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from './components/ui/Table';
+import { FormField, Input, Select, Textarea } from './components/ui/Input';
+import Alert from './components/ui/Alert';
+import EmptyState from './components/ui/EmptyState';
 
 // Ensure all Axios requests send and receive HttpOnly session cookies
 axios.defaults.withCredentials = true;
@@ -21,6 +55,7 @@ export default function App() {
 
   const [authForm, setAuthForm] = useState({ email: '', password: '', full_name: '' });
   const [authError, setAuthError] = useState('');
+  const [authSubmitting, setAuthSubmitting] = useState(false);
 
   const [departments] = useState([
     'Cardiology',
@@ -45,13 +80,14 @@ export default function App() {
   const [doctorQueue, setDoctorQueue] = useState([]);
   const [newDocForm, setNewDocForm] = useState({ full_name: '', email: '', password: '', department: 'Cardiology' });
   const [adminMsg, setAdminMsg] = useState('');
+  const [creatingDoc, setCreatingDoc] = useState(false);
 
   const [notifications, setNotifications] = useState([]);
   const [activeToasts, setActiveToasts] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [selectedPrintRecord, setSelectedPrintRecord] = useState(null);
 
-  // Phase 3 State: Emergency, Clinical Records, Admin Overview
+  // Emergency, Clinical Records, Admin Overview
   const [showEmergencyModal, setShowEmergencyModal] = useState(false);
   const [emergencySubmitting, setEmergencySubmitting] = useState(false);
   const [emergencyForm, setEmergencyForm] = useState({
@@ -116,7 +152,6 @@ export default function App() {
       return;
     }
 
-    // Fetch persisted notifications
     axios.get(`${API_BASE_URL}/api/notifications`)
       .then(res => {
         const loaded = res.data.map(n => ({
@@ -131,7 +166,6 @@ export default function App() {
       })
       .catch(err => console.error("Could not fetch notifications:", err));
 
-    // Connect to WebSocket using HttpOnly cookie automatically sent during handshake
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsHost = API_BASE_URL.replace(/^https?:\/\//, '');
     const wsUrl = `${wsProtocol}//${wsHost}/ws/notifications`;
@@ -299,1098 +333,1557 @@ export default function App() {
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError('');
+    setAuthSubmitting(true);
     try {
       if (authMode === 'login') {
-        const res = await axios.post(`${API_BASE_URL}/api/auth/login`, { email: authForm.email, password: authForm.password });
+        const res = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+          email: authForm.email,
+          password: authForm.password
+        });
         const user = res.data.user;
         setCurrentUser(user);
-        addNotification(`Welcome back, ${user.full_name}!`, user.id, 'success');
-
         if (user.role === 'admin') setActiveTab('admin');
         else if (user.role === 'doctor') setActiveTab('queue');
         else setActiveTab('booking');
       } else {
-        await axios.post(`${API_BASE_URL}/api/auth/register`, authForm);
-        setAuthMode('login');
-        setAuthError('Registration successful! Please login.');
+        await axios.post(`${API_BASE_URL}/api/auth/register`, {
+          full_name: authForm.full_name,
+          email: authForm.email,
+          password: authForm.password
+        });
+        // Auto-login after registration
+        const loginRes = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+          email: authForm.email,
+          password: authForm.password
+        });
+        setCurrentUser(loginRes.data.user);
+        setActiveTab('booking');
       }
     } catch (err) {
-      setAuthError(err.response?.data?.detail || 'Authentication failed');
+      setAuthError(err.response?.data?.detail || 'Authentication failed. Please check your credentials.');
+    } finally {
+      setAuthSubmitting(false);
     }
-  };
-
-  const handleBookAppointment = async (e) => {
-    e.preventDefault();
-    if (!selectedDoctor) return alert('Please select a doctor');
-    if (!bookingTime) return alert('Please pick an available time slot');
-    try {
-      const res = await axios.post(`${API_BASE_URL}/api/appointments/book`, {
-        patient_id: currentUser.id,
-        patient_name: currentUser.full_name,
-        doctor_id: selectedDoctor.id,
-        doctor_name: selectedDoctor.name,
-        department: selectedDept,
-        appointment_date: bookingDate,
-        appointment_time: bookingTime
-      });
-
-      addNotification(`Appointment booked with Dr. ${selectedDoctor.name}. Queue #${res.data.queue_number}`, currentUser.id, 'success');
-      addNotification(`New Patient Reserved: ${currentUser.full_name} (Queue #${res.data.queue_number})`, selectedDoctor.id, 'info');
-
-      alert(`Appointment booked successfully! Your queue number is #${res.data.queue_number}`);
-      setBookingTime('');
-      refreshData();
-      axios.get(`${API_BASE_URL}/api/appointments/available-slots`, {
-        params: { doctor_id: selectedDoctor.id, date: bookingDate }
-      }).then(r => setAvailableSlots(r.data));
-    } catch (err) {
-      alert(err.response?.data?.detail || 'Booking failed');
-    }
-  };
-
-  const handleCreateDoctor = async (e) => {
-    e.preventDefault();
-    setAdminMsg('');
-    try {
-      await axios.post(`${API_BASE_URL}/api/admin/doctors`, newDocForm);
-      setAdminMsg('Doctor account created successfully!');
-      addNotification(`Doctor Account Created: ${newDocForm.full_name}`, currentUser.id, 'info');
-      setNewDocForm({ full_name: '', email: '', password: '', department: 'Cardiology' });
-    } catch (err) {
-      setAdminMsg(err.response?.data?.detail || 'Creation failed');
-    }
-  };
-
-  const updateQueueStatus = async (appItem, status) => {
-    await axios.put(`${API_BASE_URL}/api/appointments/${appItem.id}/status`, { status });
-    addNotification(`Status for ${appItem.patient_name} changed to ${status}`, currentUser.id, 'info');
-    addNotification(`Dr. ${currentUser.full_name} updated your ticket status to: ${status}`, appItem.patient_id, 'success');
-    refreshData();
-  };
-
-  const handlePrintReport = (rec) => {
-    setSelectedPrintRecord(rec);
-    setTimeout(() => {
-      window.print();
-    }, 300);
   };
 
   const handleLogout = async () => {
     try {
       await axios.post(`${API_BASE_URL}/api/auth/logout`);
     } catch (err) {
-      console.error("Logout error:", err);
+      console.error(err);
     }
     setCurrentUser(null);
     setActiveTab('booking');
   };
 
+  const handleBookAppointment = async () => {
+    if (!selectedDoctor || !bookingTime) {
+      alert('Please select a doctor and time slot.');
+      return;
+    }
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/appointments/book`, {
+        doctor_id: selectedDoctor.id,
+        patient_name: currentUser.full_name,
+        doctor_name: selectedDoctor.name,
+        department: selectedDept,
+        appointment_date: bookingDate,
+        appointment_time: bookingTime
+      });
+      addNotification(`Appointment booked! Queue #${res.data.queue_number}`, currentUser.id, 'success');
+      refreshData();
+      setBookingTime('');
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Booking failed.');
+    }
+  };
+
+  const updateQueueStatus = async (item, newStatus) => {
+    try {
+      await axios.put(`${API_BASE_URL}/api/appointments/${item.id}/status`, { status: newStatus });
+      addNotification(`Patient #${item.queue_number} marked as ${newStatus}`, currentUser.id, 'info');
+      refreshData();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to update status.');
+    }
+  };
+
+  const handleCreateDoctor = async (e) => {
+    e.preventDefault();
+    setCreatingDoc(true);
+    setAdminMsg('');
+    try {
+      await axios.post(`${API_BASE_URL}/api/admin/doctors`, newDocForm);
+      setAdminMsg(`Doctor ${newDocForm.full_name} created successfully.`);
+      setNewDocForm({ full_name: '', email: '', password: '', department: 'Cardiology' });
+      refreshData();
+    } catch (err) {
+      setAdminMsg(err.response?.data?.detail || 'Failed to create doctor.');
+    } finally {
+      setCreatingDoc(false);
+    }
+  };
+
+  const handlePrintReport = (record) => {
+    setSelectedPrintRecord(record);
+    setTimeout(() => {
+      window.print();
+    }, 200);
+  };
+
   const handleMarkAllRead = async () => {
-    const unread = notifications.filter(n => !n.read && n.id);
-    for (const n of unread) {
-      try {
-        await axios.put(`${API_BASE_URL}/api/notifications/${n.id}/read`);
-      } catch (e) {
-        // ignore
-      }
+    try {
+      await axios.put(`${API_BASE_URL}/api/notifications/mark-all-read`);
+    } catch {
+      // ignore
     }
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
   };
 
   const userNotifications = notifications.filter(n => n.targetUserId === currentUser?.id);
+  const unreadCount = userNotifications.filter(n => !n.read).length;
 
+  // Render Loading Splash while checking session
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-[#090d16] text-slate-100 flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-3">
-          <Activity className="w-8 h-8 text-cyan-400 animate-spin" />
-          <p className="text-xs text-slate-400 font-medium">Verifying session...</p>
+      <div className="min-h-screen bg-[#090d16] flex flex-col items-center justify-center text-slate-200">
+        <div className="w-12 h-12 rounded-2xl bg-cyan-600/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 mb-4 animate-pulse">
+          <HeartPulse className="w-6 h-6 animate-spin" />
         </div>
+        <h1 className="text-base font-semibold text-slate-100">AuraHealth Core</h1>
+        <p className="text-xs text-slate-500 mt-1 font-mono">Restoring Secure Clinical Session...</p>
       </div>
     );
   }
 
+  // Render Login / Registration Screen
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#090d16] text-slate-100 flex items-center justify-center p-4">
-        <NotificationToast notifications={activeToasts} onClose={handleCloseToast} />
-        <div className="w-full max-w-md bg-[#111827] border border-slate-800 rounded-2xl p-8 shadow-2xl">
-          <div className="flex items-center gap-3 justify-center mb-6">
-            <Activity className="w-8 h-8 text-cyan-400 animate-pulse" />
-            <h1 className="text-2xl font-bold tracking-tight">AuraHealth <span className="text-cyan-400">AI System</span></h1>
+      <div className="min-h-screen bg-[#090d16] flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
+        {/* Background glow accents */}
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-cyan-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-rose-600/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10 space-y-6">
+          {/* Brand Header */}
+          <div className="text-center space-y-2">
+            <div className="inline-flex p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 mb-2 shadow-sm shadow-cyan-950/40">
+              <HeartPulse className="w-7 h-7" />
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-100">AuraHealth Core</h1>
+            <p className="text-xs text-slate-400">Clinical Artificial Intelligence & Hospital Operations Engine</p>
           </div>
 
-          <div className="flex rounded-xl bg-slate-900 p-1 mb-6 border border-slate-800">
-            <button onClick={() => { setAuthMode('login'); setAuthError(''); }} className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${authMode === 'login' ? 'bg-cyan-500 text-white' : 'text-slate-400'}`}>Sign In</button>
-            <button onClick={() => { setAuthMode('register'); setAuthError(''); }} className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${authMode === 'register' ? 'bg-cyan-500 text-white' : 'text-slate-400'}`}>Patient Register</button>
-          </div>
-
-          {authError && <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-400">{authError}</div>}
-
-          <form onSubmit={handleAuthSubmit} className="space-y-4">
-            {authMode === 'register' && (
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Full Name</label>
-                <input type="text" required value={authForm.full_name} onChange={e => setAuthForm({...authForm, full_name: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm" />
+          <Card>
+            <CardHeader className="text-center pb-2">
+              <div className="w-full flex items-center justify-center gap-2">
+                <button
+                  onClick={() => { setAuthMode('login'); setAuthError(''); }}
+                  className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
+                    authMode === 'login'
+                      ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Clinical Staff & Patient Login
+                </button>
+                <button
+                  onClick={() => { setAuthMode('register'); setAuthError(''); }}
+                  className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
+                    authMode === 'register'
+                      ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  New Patient Registration
+                </button>
               </div>
-            )}
-            <div>
-              <label className="text-xs text-slate-400 block mb-1">Email Address</label>
-              <input type="email" required value={authForm.email} onChange={e => setAuthForm({...authForm, email: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-slate-400 block mb-1">Password</label>
-              <input type="password" required value={authForm.password} onChange={e => setAuthForm({...authForm, password: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm" />
-            </div>
+            </CardHeader>
 
-            <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-semibold py-3 rounded-xl transition-all mt-2">
-              {authMode === 'login' ? 'Access Portal' : 'Create Patient Account'}
-            </button>
-          </form>
+            <CardContent>
+              {authError && (
+                <Alert variant="error" className="mb-4">
+                  {authError}
+                </Alert>
+              )}
+
+              <form onSubmit={handleAuthSubmit} className="space-y-4">
+                {authMode === 'register' && (
+                  <FormField label="Full Name" required>
+                    <Input
+                      icon={User}
+                      placeholder="e.g. Johnathan Doe"
+                      value={authForm.full_name}
+                      onChange={(e) => setAuthForm({ ...authForm, full_name: e.target.value })}
+                      required
+                    />
+                  </FormField>
+                )}
+
+                <FormField label="Account Email" required>
+                  <Input
+                    icon={Mail}
+                    type="email"
+                    placeholder="user@aurahealth.com"
+                    value={authForm.email}
+                    onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                    required
+                  />
+                </FormField>
+
+                <FormField label="Password" required>
+                  <Input
+                    icon={Lock}
+                    type="password"
+                    placeholder="••••••••"
+                    value={authForm.password}
+                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                    required
+                  />
+                </FormField>
+
+                <Button
+                  type="submit"
+                  loading={authSubmitting}
+                  className="w-full mt-2"
+                >
+                  {authMode === 'login' ? 'Authenticate & Enter Clinical Portal' : 'Create Verified Patient Account'}
+                </Button>
+              </form>
+
+              {/* Quick credential hints */}
+              <div className="mt-5 pt-4 border-t border-slate-800/80 space-y-2 text-[11px] text-slate-400">
+                <div className="flex items-center gap-1.5 font-medium text-slate-300">
+                  <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>Security & Access Governance</span>
+                </div>
+                <p className="text-slate-500 leading-relaxed">
+                  Session protected by HttpOnly SameSite=Lax JWT token cookies and PBKDF2/Bcrypt salted hashes.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
+  // Main Authenticated Portal
   return (
-    <div className="min-h-screen bg-[#090d16] text-slate-100 font-sans">
+    <div className="min-h-screen bg-[#090d16] text-slate-100 flex flex-col font-sans">
       <NotificationToast notifications={activeToasts} onClose={handleCloseToast} />
-      <nav className="bg-[#111827] border-b border-slate-800 px-6 py-4 flex justify-between items-center print:hidden">
-        <div className="flex items-center gap-3">
-          <Activity className="w-6 h-6 text-cyan-400" />
-          <span className="font-bold text-lg">AuraHealth <span className="text-cyan-400">Core</span></span>
+
+      {/* Top Clinical Header Bar */}
+      <header className="bg-[#0f172a]/95 border-b border-slate-800 sticky top-0 z-40 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          {/* Brand & Environment Tag */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-600/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-sm shadow-cyan-950/40">
+              <HeartPulse className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-slate-100 text-sm tracking-tight">AuraHealth Core</span>
+                <span className="hidden sm:inline-flex text-[10px] font-mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2 py-0.2 rounded-md">
+                  v2.4 Live
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="font-mono text-[10px] text-slate-500">Telemetry Stream Active</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Action Controls: Emergency SOS, Notifications, User Identity, Logout */}
+          <div className="flex items-center gap-3">
+            {/* Emergency SOS Button */}
+            <Button
+              variant="danger"
+              size="sm"
+              icon={AlertTriangle}
+              onClick={() => setShowEmergencyModal(true)}
+              className="shadow-md shadow-rose-950/40 animate-pulse"
+              title="Dispatch Acute Emergency Telemetry Alert"
+            >
+              <span className="hidden sm:inline">Emergency</span> SOS
+            </Button>
+
+            {/* Notification Popover Button */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowNotifs(!showNotifs)}
+                className="p-2.5 bg-slate-800 hover:bg-slate-700/80 rounded-xl relative text-slate-300 border border-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                title="View In-App Notifications"
+                aria-label="Notifications"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-bounce-once">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Notification Tray Dropdown */}
+              {showNotifs && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3 animate-in fade-in-0 zoom-in-95">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Bell className="w-4 h-4 text-cyan-400" />
+                      <span className="text-xs font-bold text-slate-100">Telemetry Notifications</span>
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-[10px] text-cyan-400 hover:text-cyan-300 font-medium"
+                      >
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-72 overflow-y-auto space-y-2 pr-1">
+                    {userNotifications.length === 0 ? (
+                      <div className="text-xs text-slate-500 text-center py-6">No recent notifications.</div>
+                    ) : (
+                      userNotifications.map(n => (
+                        <div
+                          key={n.id}
+                          className={`text-xs p-3 rounded-xl border transition-colors space-y-1 ${
+                            n.read
+                              ? 'bg-[#0b0f19] border-slate-800/80 text-slate-400'
+                              : 'bg-cyan-950/20 border-cyan-500/30 text-slate-200'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono">
+                            <span>{n.time}</span>
+                            <span className={n.type === 'error' ? 'text-rose-400' : 'text-cyan-400'}>
+                              {n.type === 'error' ? 'Urgent Alert' : 'Direct Notice'}
+                            </span>
+                          </div>
+                          <div className="leading-snug">{n.text}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* User Info & Identity Badge */}
+            <div className="hidden md:flex flex-col text-right">
+              <span className="text-xs font-semibold text-slate-200 leading-tight">{currentUser.full_name}</span>
+              <div className="flex items-center gap-1 justify-end mt-0.5">
+                <Badge
+                  variant={
+                    currentUser.role === 'admin' ? 'purple' :
+                    currentUser.role === 'doctor' ? 'info' : 'success'
+                  }
+                  size="sm"
+                >
+                  {currentUser.role}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Sign Out Button */}
+            <button
+              onClick={handleLogout}
+              title="Sign Out of Portal"
+              className="p-2.5 bg-slate-800 hover:bg-rose-500/15 hover:text-rose-400 rounded-xl text-slate-400 border border-slate-700 transition-all focus:outline-none"
+              aria-label="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-[#0b0f19] p-1 rounded-xl border border-slate-800 text-xs">
+        {/* Secondary Workspace Sub-Navigation Tabs */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1.5 overflow-x-auto py-2.5 scrollbar-none border-t border-slate-800/60">
           {currentUser.role === 'patient' && (
             <>
-              <button onClick={() => setActiveTab('booking')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'booking' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Book Appointment</button>
-              <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'profile' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>My Profile</button>
-              <button onClick={() => setActiveTab('neurology')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'neurology' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Neurology AI</button>
-              <button onClick={() => setActiveTab('ecg')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'ecg' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>ECG AI</button>
-              <button onClick={() => setActiveTab('icu')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'icu' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>ICU Risk AI</button>
-              <button onClick={() => setActiveTab('imaging')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'imaging' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Radiology AI</button>
-              <button onClick={() => setActiveTab('respiratory')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'respiratory' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Respiratory AI</button>
-              <button onClick={() => setActiveTab('records')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'records' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Medical EHR</button>
+              <button
+                onClick={() => setActiveTab('booking')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                  activeTab === 'booking' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" /> Appointments
+                {patientAppointments.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px] font-mono">
+                    {patientAppointments.length}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab('profile')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                  activeTab === 'profile' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                <User className="w-3.5 h-3.5" /> My Profile
+              </button>
+              <button
+                onClick={() => setActiveTab('records')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                  activeTab === 'records' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" /> Medical Records
+                {medicalRecords.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-[10px] font-mono">
+                    {medicalRecords.length}
+                  </span>
+                )}
+              </button>
+              <div className="h-4 w-px bg-slate-800 mx-1" />
             </>
           )}
 
           {currentUser.role === 'doctor' && (
             <>
-              <button onClick={() => setActiveTab('queue')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'queue' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-                My Clinic Queue ({currentUser.department || 'General'})
+              <button
+                onClick={() => setActiveTab('queue')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                  activeTab === 'queue' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                <Stethoscope className="w-3.5 h-3.5" /> Clinic Queue
+                {doctorQueue.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-[10px] font-mono">
+                    {doctorQueue.length}
+                  </span>
+                )}
               </button>
-              <button onClick={() => setActiveTab('emergencies')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'emergencies' ? 'bg-rose-600 text-white' : 'text-slate-400'}`}>
-                Emergency Alerts
+              <button
+                onClick={() => setActiveTab('emergencies')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                  activeTab === 'emergencies' ? 'bg-rose-600 text-white shadow-sm shadow-rose-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" /> Acute Triage Feed
+                {emergencyRecords.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-500/20 text-[10px] font-mono">
+                    {emergencyRecords.length}
+                  </span>
+                )}
               </button>
-              <button onClick={() => setActiveTab('neurology')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'neurology' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-                Neurology AI
-              </button>
-              <button onClick={() => setActiveTab('ecg')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'ecg' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-                ECG AI
-              </button>
-              <button onClick={() => setActiveTab('icu')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'icu' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-                ICU & Emergency AI
-              </button>
-              <button onClick={() => setActiveTab('imaging')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'imaging' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-                Radiology AI
-              </button>
-              <button onClick={() => setActiveTab('respiratory')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'respiratory' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
-                Respiratory AI
-              </button>
+              <div className="h-4 w-px bg-slate-800 mx-1" />
             </>
           )}
 
           {currentUser.role === 'admin' && (
             <>
-              <button onClick={() => setActiveTab('admin')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'admin' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Admin Operations</button>
-              <button onClick={() => setActiveTab('emergencies')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'emergencies' ? 'bg-rose-600 text-white' : 'text-slate-400'}`}>Emergency Triage</button>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setShowEmergencyModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition-all shadow-sm"
-            title="Dispatch Emergency Triage Alert"
-          >
-            <AlertTriangle className="w-3.5 h-3.5" /> Emergency SOS
-          </button>
-          <div className="relative">
-            <button onClick={() => setShowNotifs(!showNotifs)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl relative text-slate-300">
-              <Bell className="w-4 h-4" />
-              {userNotifications.some(n => !n.read) && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping"></span>
-              )}
-              {userNotifications.some(n => !n.read) && (
-                <span className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full border-2 border-[#111827]"></span>
-              )}
-            </button>
-
-            {showNotifs && (
-              <div className="absolute right-0 mt-2 w-80 bg-[#111827] border border-slate-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3">
-                <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                  <span className="text-xs font-bold text-slate-200">My Notifications</span>
-                  <span className="text-[10px] text-cyan-400 cursor-pointer" onClick={handleMarkAllRead}>Mark read</span>
-                </div>
-                <div className="max-h-60 overflow-y-auto space-y-2">
-                  {userNotifications.length === 0 && <p className="text-xs text-slate-500 text-center py-4">No notifications for you.</p>}
-                  {userNotifications.map(n => (
-                    <div key={n.id} className="text-xs p-2.5 bg-[#0b0f19] rounded-xl border border-slate-800 space-y-1">
-                      <div className="flex justify-between text-[10px] text-slate-500">
-                        <span>{n.time}</span>
-                        <span className="text-cyan-400">Direct Alert</span>
-                      </div>
-                      <div className="text-slate-300">{n.text}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="text-right">
-            <div className="text-xs font-semibold">{currentUser.full_name}</div>
-            <div className="text-[10px] uppercase font-mono text-cyan-400">{currentUser.role}</div>
-          </div>
-          <button onClick={handleLogout} title="Sign Out" className="p-2 bg-slate-800 hover:bg-rose-500/20 hover:text-rose-400 rounded-xl text-slate-400 transition-all">
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto p-6 print:p-0">
-        {activeTab === 'neurology' && <NeurologyDashboard currentUser={currentUser} />}
-
-        {activeTab === 'ecg' && <EcgDashboard currentUser={currentUser} />}
-
-        {activeTab === 'icu' && <IcuDashboard currentUser={currentUser} />}
-
-        {activeTab === 'imaging' && <ImagingDashboard currentUser={currentUser} />}
-
-        {activeTab === 'respiratory' && <RespiratoryDashboard currentUser={currentUser} />}
-
-        {activeTab === 'records' && (
-          <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4 print:bg-white print:text-black">
-            <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2 print:hidden">
-              <FileText className="w-5 h-5 text-cyan-400" /> My Saved AI Medical Records & EHR
-            </h2>
-
-            <div className="space-y-3 print:hidden">
-              {medicalRecords.length === 0 && <p className="text-slate-500 text-sm">No saved AI evaluations in your record yet.</p>}
-              {medicalRecords.map(rec => (
-                <div key={rec.id} className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <span className="text-xs font-bold text-cyan-400">{rec.record_type}</span>
-                      <div className="text-[10px] text-slate-500">{rec.created_at}</div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${rec.status_level === 'HIGH' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                        {rec.status_level} ({rec.risk_score}%)
-                      </span>
-                      <button onClick={() => handlePrintReport(rec)} className="flex items-center gap-1.5 bg-slate-800 hover:bg-cyan-600 text-slate-200 text-xs px-3 py-1.5 rounded-lg border border-slate-700 transition-all">
-                        <Printer className="w-3.5 h-3.5" /> Print Report
-                      </button>
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    {rec.details.map((d, idx) => <div key={idx} className="text-xs text-slate-400 bg-slate-900/50 p-2 rounded-lg">{d}</div>)}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {selectedPrintRecord && (
-              <div className="hidden print:block p-8 border border-slate-300 rounded-2xl space-y-6">
-                <div className="flex justify-between items-center border-b pb-4">
-                  <div>
-                    <h1 className="text-2xl font-bold">AuraHealth Clinical Medical Report</h1>
-                    <p className="text-sm text-gray-500">Official AI Diagnostic Assessment Record</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold">Date: {selectedPrintRecord.created_at}</p>
-                    <p className="text-xs text-gray-500">Patient: {currentUser.full_name}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border text-sm">
-                  <div><strong>Evaluation Module:</strong> {selectedPrintRecord.record_type}</div>
-                  <div><strong>Risk Score:</strong> {selectedPrintRecord.risk_score}%</div>
-                  <div><strong>Clinical Status:</strong> {selectedPrintRecord.status_level}</div>
-                  <div><strong>Patient ID:</strong> PAT-2026-AURA</div>
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="font-bold text-sm">Diagnostic Details & Clinical Recommendations:</h3>
-                  <ul className="list-disc pl-5 space-y-1 text-sm">
-                    {selectedPrintRecord.details.map((item, idx) => (
-                      <li key={idx}>{item}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="pt-12 border-t flex justify-between text-xs text-gray-400">
-                  <p>Certified by AuraHealth Core AI Diagnostic Engine</p>
-                  <p>Physician Signature: _______________________</p>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'booking' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-5 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-              <h2 className="text-base font-semibold flex items-center gap-2 text-cyan-400"><Calendar className="w-5 h-5" /> Reserve Clinic Ticket</h2>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Select Specialty</label>
-                <select value={selectedDept} onChange={e => setSelectedDept(e.target.value)} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm">
-                  {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Physician</label>
-                <select value={selectedDoctor ? selectedDoctor.id : ''} onChange={e => setSelectedDoctor(doctorsList.find(doc => doc.id === Number(e.target.value)))} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm">
-                  {doctorsList.length === 0 && <option value="">No doctors available</option>}
-                  {doctorsList.map(doc => <option key={doc.id} value={doc.id}>{doc.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Date</label>
-                <input type="date" value={bookingDate} onChange={e => setBookingDate(e.target.value)} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200" />
-              </div>
-
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Available Time Slots</label>
-                {loadingSlots && <div className="text-xs text-slate-500">Loading available times...</div>}
-                {!loadingSlots && selectedDoctor && availableSlots.length === 0 && (
-                  <div className="text-xs text-slate-500">No slots found.</div>
-                )}
-                {!loadingSlots && !selectedDoctor && (
-                  <div className="text-xs text-slate-500">Select a doctor to see available times.</div>
-                )}
-                <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto pr-1">
-                  {availableSlots.map(slot => (
-                    <button
-                      type="button"
-                      key={slot.time}
-                      disabled={!slot.available}
-                      onClick={() => setBookingTime(slot.time)}
-                      className={`text-[11px] py-2 rounded-lg border font-mono transition-all
-                        ${!slot.available ? 'bg-slate-900 border-slate-800 text-slate-600 line-through cursor-not-allowed' :
-                          bookingTime === slot.time ? 'bg-cyan-600 border-cyan-500 text-white' :
-                          'bg-[#0b0f19] border-slate-800 text-slate-300 hover:border-cyan-500'}`}
-                    >
-                      {slot.time}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <button onClick={handleBookAppointment} className="w-full bg-cyan-600 hover:bg-cyan-500 font-semibold text-sm py-3 rounded-xl transition-all">
-                Confirm Reservation {bookingTime && `(${bookingTime})`}
-              </button>
-            </div>
-
-            <div className="lg:col-span-7 bg-[#111827] p-6 rounded-2xl border border-slate-800">
-              <h2 className="text-base font-semibold mb-4 text-slate-200">Active Tickets</h2>
-              <div className="space-y-3">
-                {patientAppointments.length === 0 && (
-                  <div className="text-xs text-slate-500 py-4 text-center">No active appointment tickets.</div>
-                )}
-                {patientAppointments.map(item => (
-                  <div key={item.id} className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 flex justify-between items-center">
-                    <div>
-                      <div className="text-sm font-bold text-cyan-400">{item.department} Clinic</div>
-                      <div className="text-xs text-slate-400 mt-1">Doctor: {item.doctor_name} | {item.appointment_date} ({item.appointment_time})</div>
-                    </div>
-                    <div className="text-right flex flex-col items-end gap-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs bg-cyan-500/10 text-cyan-400 px-3 py-1 rounded-full font-mono font-semibold">Queue #{item.queue_number}</span>
-                        <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded ${
-                          item.status === 'WAITING' ? 'bg-amber-500/10 text-amber-400' :
-                          item.status === 'IN_PROGRESS' ? 'bg-cyan-500/10 text-cyan-400' :
-                          item.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' :
-                          'bg-slate-800 text-slate-400'
-                        }`}>{item.status}</span>
-                      </div>
-                      {item.status === 'WAITING' && (
-                        <button
-                          onClick={() => handleCancelAppointment(item.id)}
-                          className="text-[11px] text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2.5 py-1 rounded border border-rose-500/20 transition-all flex items-center gap-1"
-                        >
-                          <X className="w-3 h-3" /> Cancel Ticket
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'profile' && (
-          <div className="max-w-3xl mx-auto space-y-6">
-            <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-              <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-                <div className="w-12 h-12 rounded-xl bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg">
-                  {currentUser.full_name?.charAt(0) || 'P'}
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-100">{currentUser.full_name}</h2>
-                  <p className="text-xs text-slate-400 font-mono">Patient Portal ID: PAT-{currentUser.id.toString().padStart(4, '0')}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
-                  <span className="text-slate-500 block">Registered Email</span>
-                  <span className="text-slate-200 font-medium">{currentUser.email}</span>
-                </div>
-                <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
-                  <span className="text-slate-500 block">Assigned Role</span>
-                  <span className="text-cyan-400 font-semibold uppercase">{currentUser.role}</span>
-                </div>
-                <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
-                  <span className="text-slate-500 block">Department / Care Focus</span>
-                  <span className="text-slate-200">{currentUser.department || 'General Patient Care'}</span>
-                </div>
-                <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
-                  <span className="text-slate-500 block">Account Status</span>
-                  <span className="text-emerald-400 font-semibold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Active & Verified</span>
-                </div>
-              </div>
-
-              {/* Academic registry disclosure note */}
-              <div className="p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-xl text-xs text-slate-400 space-y-1">
-                <div className="font-semibold text-cyan-400 flex items-center gap-1.5">
-                  <ShieldCheck className="w-4 h-4" /> Academic & Clinical Record Notice
-                </div>
-                <p>
-                  Institutional affiliations, university enrollment, stage, and section are synchronized with your verified campus health credentials in compliance with existing database architecture.
-                </p>
-              </div>
-            </div>
-
-            {/* Quick Summary of Records & Appointments */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-[#111827] p-5 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-bold text-slate-200">Active Clinic Tickets</h3>
-                  <button onClick={() => setActiveTab('booking')} className="text-[11px] text-cyan-400 hover:underline">Manage</button>
-                </div>
-                <div className="text-2xl font-bold text-cyan-400">{patientAppointments.length}</div>
-                <p className="text-[11px] text-slate-500">Upcoming clinical consults and queue tickets.</p>
-              </div>
-
-              <div className="bg-[#111827] p-5 rounded-2xl border border-slate-800 space-y-3">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xs font-bold text-slate-200">EHR Diagnostic Records</h3>
-                  <button onClick={() => setActiveTab('records')} className="text-[11px] text-cyan-400 hover:underline">View All</button>
-                </div>
-                <div className="text-2xl font-bold text-emerald-400">{medicalRecords.length}</div>
-                <p className="text-[11px] text-slate-500">Saved AI diagnostics, evaluations, and print reports.</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'queue' && (
-          <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-              <div>
-                <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2">
-                  <Stethoscope className="w-5 h-5 text-cyan-400" /> Patient Queue Management
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Active Clinic: <span className="text-cyan-400 font-semibold">{currentUser.department || 'General Clinic'}</span>
-                </p>
-              </div>
-              <div className="bg-cyan-500/10 border border-cyan-500/20 px-3 py-1.5 rounded-xl text-xs text-cyan-400 font-mono">
-                Dr. {currentUser.full_name}
-              </div>
-            </div>
-
-            {doctorQueue.length === 0 ? (
-              <div className="text-center text-slate-500 py-8 text-xs">
-                No waiting patients for <span className="text-slate-300">{currentUser.department}</span> department today.
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-800">
-                {doctorQueue.map(item => (
-                  <div key={item.id} className="py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <span className="text-lg font-mono font-bold text-cyan-400 bg-cyan-500/10 px-3 py-1.5 rounded-xl border border-cyan-500/20">
-                        #{item.queue_number}
-                      </span>
-                      <div>
-                        <div className="text-sm font-semibold text-slate-200">{item.patient_name}</div>
-                        <div className="text-xs text-slate-400">Scheduled: {item.appointment_time}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] px-2.5 py-1 rounded-lg uppercase font-mono font-bold mr-2 ${
-                        item.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' :
-                        item.status === 'IN_PROGRESS' ? 'bg-amber-500/10 text-amber-400 animate-pulse' : 'bg-slate-800 text-slate-400'
-                      }`}>
-                        {item.status}
-                      </span>
-
-                      <button
-                        onClick={() => handleViewPatientEhr(item.patient_id, item.patient_name)}
-                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-cyan-600/30 hover:border-cyan-500 text-cyan-400 flex items-center gap-1 transition-all"
-                        title="Inspect Patient EHR"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> EHR
-                      </button>
-
-                      <button
-                        onClick={() => setDoctorClinicalModal({
-                          patient_id: item.patient_id,
-                          patient_name: item.patient_name,
-                          record_type: 'Physician Clinical Evaluation',
-                          risk_score: 15,
-                          status_level: 'NORMAL',
-                          notes: ''
-                        })}
-                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-emerald-600/30 hover:border-emerald-500 text-emerald-400 flex items-center gap-1 transition-all"
-                        title="Add Clinical Evaluation Note"
-                      >
-                        <PlusCircle className="w-3.5 h-3.5" /> Note
-                      </button>
-
-                      <button 
-                        onClick={() => updateQueueStatus(item, 'IN_PROGRESS')} 
-                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-cyan-600 hover:border-cyan-500 text-slate-200 transition-all">
-                        Call In
-                      </button>
-                      <button 
-                        onClick={() => updateQueueStatus(item, 'COMPLETED')} 
-                        className="px-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-emerald-600 hover:border-emerald-500 text-slate-200 transition-all">
-                        Complete
-                      </button>
-                      <button
-                        onClick={() => handleCancelAppointment(item.id)}
-                        className="p-1.5 text-xs rounded-lg border border-rose-500/20 bg-slate-800 hover:bg-rose-500/20 text-rose-400 transition-all"
-                        title="Cancel Appointment"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'emergencies' && (
-          <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
-              <div>
-                <h2 className="text-base font-semibold text-rose-400 flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5" /> Emergency Acute Triage Incident Feed
-                </h2>
-                <p className="text-xs text-slate-400 mt-1">Real-time acute clinical alerts and telemetry incidents</p>
-              </div>
               <button
-                onClick={() => setShowEmergencyModal(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition-all shadow-md"
-              >
-                <AlertTriangle className="w-3.5 h-3.5" /> Dispatch Alert
-              </button>
-            </div>
-
-            {emergencyRecords.length === 0 ? (
-              <div className="text-center text-slate-500 py-12 text-xs">
-                No acute emergency incidents registered in current session.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {emergencyRecords.map(em => (
-                  <div key={em.id} className="bg-[#0b0f19] p-4 rounded-xl border border-rose-500/20 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-100 text-sm">{em.patient_name}</span>
-                          <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 font-mono font-bold">
-                            EHR #{em.id}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-400 mt-0.5">{em.diagnosis || 'Acute Distress'}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-[10px] text-slate-500">{em.created_at}</div>
-                        {currentUser.role !== 'patient' && em.patient_id && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <button
-                              onClick={() => handleViewPatientEhr(em.patient_id, em.patient_name)}
-                              className="text-[11px] text-cyan-400 hover:underline flex items-center gap-1"
-                            >
-                              <Eye className="w-3 h-3" /> View EHR
-                            </button>
-                            <button
-                              onClick={() => setDoctorClinicalModal({
-                                patient_id: em.patient_id,
-                                patient_name: em.patient_name,
-                                record_type: 'Emergency Triage Follow-up',
-                                risk_score: 90,
-                                status_level: 'CRITICAL',
-                                notes: `Follow-up on Emergency EHR #${em.id}: ${em.triage_notes || em.diagnosis}`
-                              })}
-                              className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1"
-                            >
-                              <PlusCircle className="w-3 h-3" /> Record Evaluation
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2 text-[11px] bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-                      <div><span className="text-slate-500 block">Heart Rate</span><span className="font-mono text-rose-400 font-bold">{em.heart_rate} bpm</span></div>
-                      <div><span className="text-slate-500 block">SpO2</span><span className="font-mono text-cyan-400 font-bold">{em.spo2}%</span></div>
-                      <div><span className="text-slate-500 block">Blood Pressure</span><span className="font-mono text-slate-200">{em.blood_pressure}</span></div>
-                      <div><span className="text-slate-500 block">Temp</span><span className="font-mono text-amber-400">{em.temperature}°C</span></div>
-                    </div>
-
-                    {em.triage_notes && (
-                      <div className="text-xs text-slate-300 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
-                        <span className="text-slate-500 block text-[10px] mb-0.5">Triage Clinical Notes:</span>
-                        {em.triage_notes}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'admin' && (
-          <div className="space-y-6">
-            <div className="flex gap-2 border-b border-slate-800 pb-3">
-              <button
-                onClick={() => setAdminSubTab('doctors')}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  adminSubTab === 'doctors' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                onClick={() => setActiveTab('admin')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                  activeTab === 'admin' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                 }`}
               >
-                Doctors Directory & Onboarding
+                <ShieldCheck className="w-3.5 h-3.5" /> Hospital Operations
+              </button>
+              <button
+                onClick={() => setActiveTab('emergencies')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                  activeTab === 'emergencies' ? 'bg-rose-600 text-white shadow-sm shadow-rose-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                <AlertTriangle className="w-3.5 h-3.5" /> Emergency Triage Feed
+              </button>
+              <div className="h-4 w-px bg-slate-800 mx-1" />
+            </>
+          )}
+
+          {/* AI Diagnostic Workstations (Available to all authorized roles) */}
+          <button
+            onClick={() => setActiveTab('neurology')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'neurology' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Brain className="w-3.5 h-3.5" /> Neurology AI
+          </button>
+          <button
+            onClick={() => setActiveTab('ecg')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'ecg' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Heart className="w-3.5 h-3.5" /> ECG Rhythm
+          </button>
+          <button
+            onClick={() => setActiveTab('icu')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'icu' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <HeartPulse className="w-3.5 h-3.5" /> ICU Risk AI
+          </button>
+          <button
+            onClick={() => setActiveTab('imaging')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'imaging' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" /> Radiology AI
+          </button>
+          <button
+            onClick={() => setActiveTab('respiratory')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+              activeTab === 'respiratory' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Wind className="w-3.5 h-3.5" /> Respiratory AI
+          </button>
+        </div>
+      </header>
+
+      {/* Main Workspace Surface */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 print:p-0">
+        {activeTab === 'neurology' && <NeurologyDashboard currentUser={currentUser} />}
+        {activeTab === 'ecg' && <EcgDashboard currentUser={currentUser} />}
+        {activeTab === 'icu' && <IcuDashboard currentUser={currentUser} />}
+        {activeTab === 'imaging' && <ImagingDashboard currentUser={currentUser} />}
+        {activeTab === 'respiratory' && <RespiratoryDashboard currentUser={currentUser} />}
+
+        {/* --- 1. PATIENT: MY SAVED EHR MEDICAL RECORDS --- */}
+        {activeTab === 'records' && (
+          <div className="space-y-6 print:bg-white print:text-black">
+            <Card className="print:border-none print:shadow-none">
+              <CardHeader className="print:hidden">
+                <div>
+                  <CardTitle icon={FileText}>Personal Medical Health Records (EHR)</CardTitle>
+                  <CardDescription>Verified AI evaluations, diagnostic impressions, and clinical encounter notes</CardDescription>
+                </div>
+                <Badge variant="info" size="md">
+                  {medicalRecords.length} Saved Records
+                </Badge>
+              </CardHeader>
+              <CardContent className="print:hidden">
+                {medicalRecords.length === 0 ? (
+                  <EmptyState
+                    icon={FileText}
+                    title="No Medical Records on File"
+                    description="Run an AI diagnostic evaluation (Neurology, ECG, ICU, Radiology, or Respiratory) and click 'Save to Patient EHR' to record your first clinical document."
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    {medicalRecords.map((rec) => (
+                      <div
+                        key={rec.id}
+                        className="bg-[#0b0f19] p-4 sm:p-5 rounded-2xl border border-slate-800/80 space-y-3 transition-all hover:border-slate-700"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/60 pb-3">
+                          <div>
+                            <span className="text-xs font-bold text-cyan-400">{rec.record_type}</span>
+                            <div className="text-[11px] text-slate-500 font-mono mt-0.5">{rec.created_at}</div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Badge
+                              variant={
+                                rec.status_level === 'CRITICAL' || rec.status_level === 'HIGH' ? 'danger' :
+                                rec.status_level === 'MODERATE' ? 'warning' : 'success'
+                              }
+                              size="md"
+                              dot
+                            >
+                              {rec.status_level} ({rec.risk_score}%)
+                            </Badge>
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              icon={Printer}
+                              onClick={() => handlePrintReport(rec)}
+                            >
+                              Print Official Report
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {rec.details && rec.details.map((d, idx) => (
+                            <div
+                              key={idx}
+                              className="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/60 leading-relaxed"
+                            >
+                              {d}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+
+              {/* Printable Official Clinical Report */}
+              {selectedPrintRecord && (
+                <div className="hidden print:block p-8 border border-slate-300 rounded-2xl space-y-6 text-black">
+                  <div className="flex justify-between items-center border-b pb-4">
+                    <div>
+                      <h1 className="text-2xl font-bold">AuraHealth Clinical Medical Report</h1>
+                      <p className="text-xs text-gray-500">Certified Hospital EHR Diagnostic Evaluation</p>
+                    </div>
+                    <div className="text-right text-xs">
+                      <p className="font-semibold">Assessment Date: {selectedPrintRecord.created_at}</p>
+                      <p className="text-gray-500">Patient: {currentUser.full_name}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border text-xs">
+                    <div><strong>Module Evaluated:</strong> {selectedPrintRecord.record_type}</div>
+                    <div><strong>Assessed Risk Metric:</strong> {selectedPrintRecord.risk_score}%</div>
+                    <div><strong>Clinical Acuity Status:</strong> {selectedPrintRecord.status_level}</div>
+                    <div><strong>Patient Registry ID:</strong> PAT-{currentUser.id.toString().padStart(4, '0')}</div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="font-bold text-xs">Diagnostic Assessment & Biomarker Details:</h3>
+                    <ul className="list-disc pl-5 space-y-1 text-xs text-gray-700">
+                      {selectedPrintRecord.details && selectedPrintRecord.details.map((item, idx) => (
+                        <li key={idx}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="pt-12 border-t flex justify-between text-xs text-gray-400">
+                    <p>Verified by AuraHealth Core Clinical Neural Diagnostic Engine</p>
+                    <p>Attending Physician Signature: _______________________</p>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
+
+        {/* --- 2. PATIENT: APPOINTMENT BOOKING & ACTIVE TICKETS --- */}
+        {activeTab === 'booking' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left Column: Reservation Form */}
+            <Card className="lg:col-span-5">
+              <CardHeader>
+                <div>
+                  <CardTitle icon={Calendar}>Reserve Consultation Ticket</CardTitle>
+                  <CardDescription>Select specialty, doctor, and live appointment slot</CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <FormField label="Clinical Specialty">
+                  <Select value={selectedDept} onChange={e => setSelectedDept(e.target.value)}>
+                    {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                  </Select>
+                </FormField>
+
+                <FormField label="Attending Physician">
+                  <Select
+                    value={selectedDoctor ? selectedDoctor.id : ''}
+                    onChange={e => setSelectedDoctor(doctorsList.find(doc => doc.id === Number(e.target.value)))}
+                  >
+                    {doctorsList.length === 0 && <option value="">No physicians scheduled</option>}
+                    {doctorsList.map(doc => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.name} ({doc.department})
+                      </option>
+                    ))}
+                  </Select>
+                </FormField>
+
+                <FormField label="Target Date">
+                  <Input
+                    type="date"
+                    value={bookingDate}
+                    onChange={e => setBookingDate(e.target.value)}
+                  />
+                </FormField>
+
+                <FormField label="Available Clinic Slots" hint="Select an open 20-minute consultation window">
+                  {loadingSlots && <div className="text-xs text-slate-500 py-2">Loading available clinic slots...</div>}
+                  {!loadingSlots && selectedDoctor && availableSlots.length === 0 && (
+                    <div className="text-xs text-slate-500 py-2">No open slots found for this date.</div>
+                  )}
+                  {!loadingSlots && !selectedDoctor && (
+                    <div className="text-xs text-slate-500 py-2">Select an attending physician to load open slots.</div>
+                  )}
+                  <div className="grid grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
+                    {availableSlots.map(slot => (
+                      <button
+                        type="button"
+                        key={slot.time}
+                        disabled={!slot.available}
+                        onClick={() => setBookingTime(slot.time)}
+                        className={`text-[11px] py-2 rounded-xl border font-mono transition-all duration-150 ${
+                          !slot.available
+                            ? 'bg-slate-900 border-slate-800 text-slate-600 line-through cursor-not-allowed opacity-50'
+                            : bookingTime === slot.time
+                            ? 'bg-cyan-600 border-cyan-500 text-white shadow-sm shadow-cyan-950/40 font-semibold'
+                            : 'bg-[#0b0f19] border-slate-800 text-slate-300 hover:border-slate-700'
+                        }`}
+                      >
+                        {slot.time}
+                      </button>
+                    ))}
+                  </div>
+                </FormField>
+
+                <Button
+                  onClick={handleBookAppointment}
+                  disabled={!selectedDoctor || !bookingTime}
+                  className="w-full mt-2"
+                >
+                  Confirm Reservation {bookingTime && `(${bookingTime})`}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Right Column: Active Tickets */}
+            <Card className="lg:col-span-7">
+              <CardHeader>
+                <div>
+                  <CardTitle icon={Clock}>My Active Consultation Tickets</CardTitle>
+                  <CardDescription>Live clinic queue position & scheduled consults</CardDescription>
+                </div>
+                <Badge variant="info" size="sm">
+                  {patientAppointments.length} Active
+                </Badge>
+              </CardHeader>
+              <CardContent>
+                {patientAppointments.length === 0 ? (
+                  <EmptyState
+                    icon={Calendar}
+                    title="No Active Consultation Tickets"
+                    description="Book an appointment on the left to obtain your queue ticket number and scheduled consultation slot."
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {patientAppointments.map(item => (
+                      <div
+                        key={item.id}
+                        className="bg-[#0b0f19] p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-cyan-400">{item.department} Clinic</span>
+                            <span className="text-[10px] text-slate-500 font-mono">Ticket #{item.id}</span>
+                          </div>
+                          <div className="text-xs text-slate-300 mt-1">
+                            Dr. {item.doctor_name} • <span className="font-mono text-slate-400">{item.appointment_date} ({item.appointment_time})</span>
+                          </div>
+                        </div>
+
+                        <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                              Queue #{item.queue_number}
+                            </span>
+                            <Badge
+                              variant={
+                                item.status === 'COMPLETED' ? 'success' :
+                                item.status === 'IN_PROGRESS' ? 'warning' :
+                                item.status === 'CANCELLED' ? 'danger' : 'info'
+                              }
+                              size="sm"
+                              dot={item.status === 'IN_PROGRESS'}
+                              pulse={item.status === 'IN_PROGRESS'}
+                            >
+                              {item.status}
+                            </Badge>
+                          </div>
+
+                          {item.status === 'WAITING' && (
+                            <Button
+                              variant="dangerOutline"
+                              size="xs"
+                              icon={X}
+                              onClick={() => handleCancelAppointment(item.id)}
+                            >
+                              Cancel Ticket
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* --- 3. PATIENT: PROFILE TAB --- */}
+        {activeTab === 'profile' && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-cyan-600/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg shadow-sm">
+                    {currentUser.full_name?.charAt(0) || 'P'}
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-100">{currentUser.full_name}</h2>
+                    <p className="text-xs text-slate-400 font-mono">Patient Portal Identifier: PAT-{currentUser.id.toString().padStart(4, '0')}</p>
+                  </div>
+                </div>
+                <Badge variant="success" size="sm" dot>Verified Patient</Badge>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-slate-500 block font-mono text-[10px] uppercase">Registered Official Email</span>
+                    <span className="text-slate-200 font-medium">{currentUser.email}</span>
+                  </div>
+                  <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-slate-500 block font-mono text-[10px] uppercase">Assigned Security Role</span>
+                    <span className="text-cyan-400 font-semibold uppercase">{currentUser.role}</span>
+                  </div>
+                  <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-slate-500 block font-mono text-[10px] uppercase">Assigned Clinic / Care Focus</span>
+                    <span className="text-slate-200">{currentUser.department || 'General Care'}</span>
+                  </div>
+                  <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
+                    <span className="text-slate-500 block font-mono text-[10px] uppercase">Session Security State</span>
+                    <span className="text-emerald-400 font-semibold flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5" /> HttpOnly Authenticated
+                    </span>
+                  </div>
+                </div>
+
+                {/* Academic registry transparency notice */}
+                <Alert variant="info" title="Academic & Institutional Registry Synchronization">
+                  Student and campus credentials (University, Academic Stage, Section) are preserved in the institutional record in compliance with the current database schema constraints.
+                </Alert>
+              </CardContent>
+            </Card>
+
+            {/* Overview Quick Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Card hover onClick={() => setActiveTab('booking')} className="cursor-pointer">
+                <CardContent className="flex items-center justify-between p-5">
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold text-slate-400 block">Active Clinic Tickets</span>
+                    <div className="text-2xl font-bold font-mono text-cyan-400">{patientAppointments.length}</div>
+                    <p className="text-[11px] text-slate-500">Upcoming clinical consults</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-slate-600" />
+                </CardContent>
+              </Card>
+
+              <Card hover onClick={() => setActiveTab('records')} className="cursor-pointer">
+                <CardContent className="flex items-center justify-between p-5">
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold text-slate-400 block">Stored EHR Diagnostic Records</span>
+                    <div className="text-2xl font-bold font-mono text-emerald-400">{medicalRecords.length}</div>
+                    <p className="text-[11px] text-slate-500">Saved AI assessments</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-slate-600" />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {/* --- 4. DOCTOR: CLINIC QUEUE MANAGEMENT --- */}
+        {activeTab === 'queue' && (
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle icon={Stethoscope}>Patient Queue Management</CardTitle>
+                <CardDescription>
+                  Active Department: <span className="text-cyan-400 font-semibold">{currentUser.department || 'General Clinic'}</span>
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="info" size="md">
+                  Dr. {currentUser.full_name}
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {doctorQueue.length === 0 ? (
+                <EmptyState
+                  icon={Stethoscope}
+                  title="No Patients in Queue"
+                  description={`There are currently no waiting appointments scheduled for the ${currentUser.department || 'General'} department today.`}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {doctorQueue.map(item => (
+                    <div
+                      key={item.id}
+                      className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:border-slate-700"
+                    >
+                      <div className="flex items-center gap-4">
+                        <span className="text-xl font-mono font-bold text-cyan-400 bg-cyan-500/10 px-3.5 py-2 rounded-xl border border-cyan-500/20">
+                          #{item.queue_number}
+                        </span>
+                        <div>
+                          <div className="text-sm font-bold text-slate-100">{item.patient_name}</div>
+                          <div className="text-xs text-slate-400 font-mono mt-0.5">
+                            Scheduled: {item.appointment_time} • {item.appointment_date}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant={
+                            item.status === 'COMPLETED' ? 'success' :
+                            item.status === 'IN_PROGRESS' ? 'warning' : 'neutral'
+                          }
+                          size="md"
+                          dot={item.status === 'IN_PROGRESS'}
+                          pulse={item.status === 'IN_PROGRESS'}
+                        >
+                          {item.status}
+                        </Badge>
+
+                        <Button
+                          variant="secondary"
+                          size="xs"
+                          icon={Eye}
+                          onClick={() => handleViewPatientEhr(item.patient_id, item.patient_name)}
+                          title="Inspect Patient EHR"
+                        >
+                          EHR
+                        </Button>
+
+                        <Button
+                          variant="secondary"
+                          size="xs"
+                          icon={PlusCircle}
+                          onClick={() => setDoctorClinicalModal({
+                            patient_id: item.patient_id,
+                            patient_name: item.patient_name,
+                            record_type: 'Physician Clinical Evaluation',
+                            risk_score: 15,
+                            status_level: 'NORMAL',
+                            notes: ''
+                          })}
+                          title="Record Clinical Evaluation Note"
+                        >
+                          Note
+                        </Button>
+
+                        <Button
+                          variant="primary"
+                          size="xs"
+                          onClick={() => updateQueueStatus(item, 'IN_PROGRESS')}
+                        >
+                          Call In
+                        </Button>
+
+                        <Button
+                          variant="success"
+                          size="xs"
+                          onClick={() => updateQueueStatus(item, 'COMPLETED')}
+                        >
+                          Complete
+                        </Button>
+
+                        <Button
+                          variant="dangerOutline"
+                          size="xs"
+                          icon={X}
+                          onClick={() => handleCancelAppointment(item.id)}
+                          title="Cancel Appointment"
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* --- 5. EMERGENCY ACUTE TRIAGE FEED (Doctor & Admin) --- */}
+        {activeTab === 'emergencies' && (
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle icon={AlertTriangle}>Emergency Acute Triage Telemetry Feed</CardTitle>
+                <CardDescription>Real-time clinical alerts, acute distress incidents, and telemetry feeds</CardDescription>
+              </div>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={AlertTriangle}
+                onClick={() => setShowEmergencyModal(true)}
+              >
+                Dispatch Alert
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {emergencyRecords.length === 0 ? (
+                <EmptyState
+                  icon={AlertTriangle}
+                  title="No Acute Emergency Incidents"
+                  description="No acute distress cases registered in current session."
+                />
+              ) : (
+                <div className="space-y-4">
+                  {emergencyRecords.map(em => (
+                    <div
+                      key={em.id}
+                      className="bg-[#0b0f19] p-5 rounded-2xl border border-rose-500/20 space-y-3.5 shadow-sm shadow-rose-950/20"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <span className="font-bold text-slate-100 text-sm">{em.patient_name}</span>
+                          <Badge variant="danger" size="sm">
+                            EHR #{em.id}
+                          </Badge>
+                          <span className="text-xs text-slate-400">• {em.diagnosis || 'Acute Distress'}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-[11px] font-mono text-slate-500">{em.created_at}</span>
+                          {currentUser.role !== 'patient' && em.patient_id && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                icon={Eye}
+                                onClick={() => handleViewPatientEhr(em.patient_id, em.patient_name)}
+                              >
+                                View EHR
+                              </Button>
+                              <Button
+                                variant="secondary"
+                                size="xs"
+                                icon={PlusCircle}
+                                onClick={() => setDoctorClinicalModal({
+                                  patient_id: em.patient_id,
+                                  patient_name: em.patient_name,
+                                  record_type: 'Emergency Triage Follow-up',
+                                  risk_score: 90,
+                                  status_level: 'CRITICAL',
+                                  notes: `Follow-up on Emergency EHR #${em.id}: ${em.triage_notes || em.diagnosis}`
+                                })}
+                              >
+                                Add Note
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Vital Signs Grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-900/60 p-3.5 rounded-xl border border-slate-800">
+                        <div>
+                          <span className="text-slate-500 text-[10px] uppercase font-mono block">Heart Rate</span>
+                          <span className="font-mono text-rose-400 font-bold text-sm">{em.heart_rate} bpm</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-[10px] uppercase font-mono block">Oxygen SpO2</span>
+                          <span className="font-mono text-cyan-400 font-bold text-sm">{em.spo2}%</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-[10px] uppercase font-mono block">Blood Pressure</span>
+                          <span className="font-mono text-slate-200 font-bold text-sm">{em.blood_pressure}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500 text-[10px] uppercase font-mono block">Temperature</span>
+                          <span className="font-mono text-amber-400 font-bold text-sm">{em.temperature}°C</span>
+                        </div>
+                      </div>
+
+                      {em.triage_notes && (
+                        <div className="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800/80 leading-relaxed">
+                          <span className="text-slate-500 text-[10px] font-mono block mb-1 uppercase tracking-wider">
+                            Attending Clinical Triage Notes:
+                          </span>
+                          {em.triage_notes}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* --- 6. ADMIN: OPERATIONS PORTAL --- */}
+        {activeTab === 'admin' && (
+          <div className="space-y-6">
+            {/* Sub-navigation Controls */}
+            <div className="flex gap-2 p-1.5 bg-[#0f172a] rounded-2xl border border-slate-800 overflow-x-auto">
+              <button
+                onClick={() => setAdminSubTab('doctors')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  adminSubTab === 'doctors' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Medical Staff Directory & Onboarding
               </button>
               <button
                 onClick={() => setAdminSubTab('users')}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  adminSubTab === 'users' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  adminSubTab === 'users' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 System Users Directory ({adminUsers.length})
               </button>
               <button
                 onClick={() => setAdminSubTab('appointments')}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  adminSubTab === 'appointments' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  adminSubTab === 'appointments' ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-950/40' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                All Clinic Appointments ({adminAppointments.length})
+                Hospital Appointments Registry ({adminAppointments.length})
               </button>
             </div>
 
+            {/* Subtab 1: Doctors Directory & Onboarding Form */}
             {adminSubTab === 'doctors' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                <div className="lg:col-span-5 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-                  <h2 className="text-base font-semibold text-cyan-400 flex items-center gap-2"><ShieldCheck className="w-5 h-5" /> Onboard Clinical Doctor</h2>
-                  {adminMsg && <div className="p-3 bg-cyan-500/10 text-cyan-400 text-xs rounded-xl">{adminMsg}</div>}
-                  <form onSubmit={handleCreateDoctor} className="space-y-3">
+                <Card className="lg:col-span-5">
+                  <CardHeader>
                     <div>
-                      <label className="text-xs text-slate-400 block mb-1">Doctor Full Name</label>
-                      <input type="text" placeholder="Dr. Jane Smith" required value={newDocForm.full_name} onChange={e => setNewDocForm({...newDocForm, full_name: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
+                      <CardTitle icon={ShieldCheck}>Onboard Medical Doctor</CardTitle>
+                      <CardDescription>Register a verified physician into clinical departments</CardDescription>
                     </div>
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Official Email</label>
-                      <input type="email" placeholder="jane.smith@aurahealth.com" required value={newDocForm.email} onChange={e => setNewDocForm({...newDocForm, email: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Temporary Password</label>
-                      <input type="password" placeholder="••••••••" required value={newDocForm.password} onChange={e => setNewDocForm({...newDocForm, password: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
-                    </div>
-                    <div>
-                      <label className="text-xs text-slate-400 block mb-1">Clinical Department</label>
-                      <select value={newDocForm.department} onChange={e => setNewDocForm({...newDocForm, department: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm text-slate-200">
-                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                      </select>
-                    </div>
-                    <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 font-semibold text-sm py-3 rounded-xl transition-all">Create Doctor Account</button>
-                  </form>
-                </div>
+                  </CardHeader>
+                  <CardContent>
+                    {adminMsg && (
+                      <Alert variant={adminMsg.includes('success') ? 'success' : 'error'} className="mb-4">
+                        {adminMsg}
+                      </Alert>
+                    )}
+                    <form onSubmit={handleCreateDoctor} className="space-y-4">
+                      <FormField label="Physician Full Name" required>
+                        <Input
+                          type="text"
+                          placeholder="Dr. Jane Smith"
+                          value={newDocForm.full_name}
+                          onChange={e => setNewDocForm({...newDocForm, full_name: e.target.value})}
+                          required
+                        />
+                      </FormField>
 
-                <div className="lg:col-span-7 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-                  <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2"><Users className="w-5 h-5 text-cyan-400" /> Active Medical Staff ({doctorsList.length})</h2>
-                  <div className="space-y-3">
-                    {doctorsList.map(doc => (
-                      <div key={doc.id} className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 flex justify-between items-center">
-                        <div>
-                          <div className="text-sm font-bold text-slate-200">{doc.name}</div>
-                          <div className="text-xs text-cyan-400 mt-0.5">{doc.department}</div>
+                      <FormField label="Official Hospital Email" required>
+                        <Input
+                          type="email"
+                          placeholder="jane.smith@aurahealth.com"
+                          value={newDocForm.email}
+                          onChange={e => setNewDocForm({...newDocForm, email: e.target.value})}
+                          required
+                        />
+                      </FormField>
+
+                      <FormField label="Initial Password" required>
+                        <Input
+                          type="password"
+                          placeholder="••••••••"
+                          value={newDocForm.password}
+                          onChange={e => setNewDocForm({...newDocForm, password: e.target.value})}
+                          required
+                        />
+                      </FormField>
+
+                      <FormField label="Clinical Specialty / Department" required>
+                        <Select
+                          value={newDocForm.department}
+                          onChange={e => setNewDocForm({...newDocForm, department: e.target.value})}
+                        >
+                          {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                        </Select>
+                      </FormField>
+
+                      <Button
+                        type="submit"
+                        loading={creatingDoc}
+                        className="w-full mt-2"
+                      >
+                        Create Doctor Account
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                <Card className="lg:col-span-7">
+                  <CardHeader>
+                    <div>
+                      <CardTitle icon={Users}>Active Medical Staff Directory</CardTitle>
+                      <CardDescription>Verified physicians currently assigned to hospital departments</CardDescription>
+                    </div>
+                    <Badge variant="info" size="sm">
+                      {doctorsList.length} Doctors
+                    </Badge>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {doctorsList.map(doc => (
+                        <div
+                          key={doc.id}
+                          className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex items-center justify-between"
+                        >
+                          <div>
+                            <div className="text-xs font-bold text-slate-100">{doc.name}</div>
+                            <div className="text-[11px] text-cyan-400 mt-0.5">{doc.department} Clinic</div>
+                          </div>
+                          <Badge variant="neutral" size="sm">
+                            DOC-{doc.id.toString().padStart(3, '0')}
+                          </Badge>
                         </div>
-                        <span className="text-[10px] px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 font-mono">
-                          ID: DOC-{doc.id.toString().padStart(3, '0')}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {adminSubTab === 'users' && (
-              <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-                <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2"><User className="w-5 h-5 text-cyan-400" /> All Registered Accounts</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
-                        <th className="py-3 px-3">ID</th>
-                        <th className="py-3 px-3">Name</th>
-                        <th className="py-3 px-3">Email</th>
-                        <th className="py-3 px-3">Role</th>
-                        <th className="py-3 px-3">Department</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800 text-slate-300">
-                      {adminUsers.map(u => (
-                        <tr key={u.id} className="hover:bg-slate-800/40">
-                          <td className="py-3 px-3 font-mono text-cyan-400">#{u.id}</td>
-                          <td className="py-3 px-3 font-semibold text-slate-100">{u.full_name}</td>
-                          <td className="py-3 px-3 text-slate-400 font-mono">{u.email}</td>
-                          <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono ${
-                              u.role === 'admin' ? 'bg-purple-500/10 text-purple-400' :
-                              u.role === 'doctor' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-emerald-500/10 text-emerald-400'
-                            }`}>
-                              {u.role}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 text-slate-400">{u.department || '—'}</td>
-                        </tr>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
 
+            {/* Subtab 2: All Users Directory */}
+            {adminSubTab === 'users' && (
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle icon={User}>Hospital User Accounts Ledger</CardTitle>
+                    <CardDescription>Registered patients, physicians, and administrative accounts</CardDescription>
+                  </div>
+                  <Badge variant="info" size="sm">
+                    {adminUsers.length} Users
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow hover={false}>
+                        <TableHead>User ID</TableHead>
+                        <TableHead>Full Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Department</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {adminUsers.map(u => (
+                        <TableRow key={u.id}>
+                          <TableCell className="font-mono text-cyan-400">#{u.id}</TableCell>
+                          <TableCell className="font-semibold text-slate-100">{u.full_name}</TableCell>
+                          <TableCell className="font-mono text-slate-400">{u.email}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                u.role === 'admin' ? 'purple' :
+                                u.role === 'doctor' ? 'info' : 'success'
+                              }
+                              size="sm"
+                            >
+                              {u.role}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-slate-400">{u.department || '—'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Subtab 3: Hospital Appointments Registry */}
             {adminSubTab === 'appointments' && (
-              <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-                <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2"><Calendar className="w-5 h-5 text-cyan-400" /> Hospital Appointments Registry</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
-                        <th className="py-3 px-3">ID</th>
-                        <th className="py-3 px-3">Patient</th>
-                        <th className="py-3 px-3">Doctor</th>
-                        <th className="py-3 px-3">Dept</th>
-                        <th className="py-3 px-3">Date / Time</th>
-                        <th className="py-3 px-3">Queue</th>
-                        <th className="py-3 px-3">Status</th>
-                        <th className="py-3 px-3">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800 text-slate-300">
+              <Card>
+                <CardHeader>
+                  <div>
+                    <CardTitle icon={Calendar}>Hospital Appointments Registry</CardTitle>
+                    <CardDescription>Comprehensive ledger of all consultations across hospital departments</CardDescription>
+                  </div>
+                  <Badge variant="info" size="sm">
+                    {adminAppointments.length} Total
+                  </Badge>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow hover={false}>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Patient</TableHead>
+                        <TableHead>Doctor</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Date / Time</TableHead>
+                        <TableHead>Queue</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {adminAppointments.map(a => (
-                        <tr key={a.id} className="hover:bg-slate-800/40">
-                          <td className="py-3 px-3 font-mono text-cyan-400">#{a.id}</td>
-                          <td className="py-3 px-3 font-semibold text-slate-100">{a.patient_name}</td>
-                          <td className="py-3 px-3 text-slate-300">{a.doctor_name}</td>
-                          <td className="py-3 px-3 text-slate-400">{a.department}</td>
-                          <td className="py-3 px-3 font-mono text-slate-400">{a.appointment_date} {a.appointment_time}</td>
-                          <td className="py-3 px-3 font-mono text-cyan-400">#{a.queue_number}</td>
-                          <td className="py-3 px-3">
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono ${
-                              a.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' :
-                              a.status === 'IN_PROGRESS' ? 'bg-amber-500/10 text-amber-400' :
-                              a.status === 'CANCELLED' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'
-                            }`}>
+                        <TableRow key={a.id}>
+                          <TableCell className="font-mono text-cyan-400">#{a.id}</TableCell>
+                          <TableCell className="font-semibold text-slate-100">{a.patient_name}</TableCell>
+                          <TableCell className="text-slate-300">{a.doctor_name}</TableCell>
+                          <TableCell className="text-slate-400">{a.department}</TableCell>
+                          <TableCell className="font-mono text-slate-400 text-[11px]">{a.appointment_date} {a.appointment_time}</TableCell>
+                          <TableCell className="font-mono text-cyan-400">#{a.queue_number}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                a.status === 'COMPLETED' ? 'success' :
+                                a.status === 'IN_PROGRESS' ? 'warning' :
+                                a.status === 'CANCELLED' ? 'danger' : 'neutral'
+                              }
+                              size="sm"
+                              dot={a.status === 'IN_PROGRESS'}
+                            >
                               {a.status}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
                             {a.status === 'WAITING' && (
-                              <button
+                              <Button
+                                variant="dangerOutline"
+                                size="xs"
                                 onClick={() => handleCancelAppointment(a.id)}
-                                className="text-[10px] text-rose-400 hover:underline"
                               >
                                 Cancel
-                              </button>
+                              </Button>
                             )}
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
             )}
           </div>
         )}
       </main>
 
-      {/* 1. Emergency SOS Dispatch Modal */}
-      {showEmergencyModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-rose-500/30 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-rose-400 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" /> Emergency Acute Triage SOS
-              </h3>
-              <button onClick={() => setShowEmergencyModal(false)} className="text-slate-400 hover:text-slate-200">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <p className="text-xs text-slate-400">
-              Dispatch an acute emergency alert to the critical care and telemetry staff immediately.
-            </p>
-            <form onSubmit={handleSubmitEmergency} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-400 block mb-1">Heart Rate (bpm)</label>
-                  <input
-                    type="number"
-                    value={emergencyForm.heart_rate}
-                    onChange={e => setEmergencyForm({...emergencyForm, heart_rate: e.target.value})}
-                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-400 block mb-1">SpO2 (%)</label>
-                  <input
-                    type="number"
-                    value={emergencyForm.spo2}
-                    onChange={e => setEmergencyForm({...emergencyForm, spo2: e.target.value})}
-                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-400 block mb-1">Blood Pressure</label>
-                  <input
-                    type="text"
-                    value={emergencyForm.blood_pressure}
-                    onChange={e => setEmergencyForm({...emergencyForm, blood_pressure: e.target.value})}
-                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-slate-400 block mb-1">Temperature (°C)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={emergencyForm.temperature}
-                    onChange={e => setEmergencyForm({...emergencyForm, temperature: e.target.value})}
-                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                    required
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-slate-400 block mb-1">Suspected Diagnosis / Acute Symptoms</label>
-                <input
-                  type="text"
-                  value={emergencyForm.diagnosis}
-                  onChange={e => setEmergencyForm({...emergencyForm, diagnosis: e.target.value})}
-                  className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                  required
-                />
-              </div>
-              <div>
-                <label className="text-slate-400 block mb-1">Clinical Triage Notes</label>
-                <textarea
-                  rows="2"
-                  value={emergencyForm.triage_notes}
-                  onChange={e => setEmergencyForm({...emergencyForm, triage_notes: e.target.value})}
-                  placeholder="Patient presenting acute chest pain, shortness of breath, diaphoresis..."
-                  className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                ></textarea>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowEmergencyModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={emergencySubmitting}
-                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold transition-all flex items-center gap-1.5 shadow-lg"
-                >
-                  <AlertTriangle className="w-4 h-4" /> {emergencySubmitting ? 'Dispatching...' : 'Dispatch Alert'}
-                </button>
-              </div>
-            </form>
+      {/* --- MODAL 1: EMERGENCY SOS DISPATCH MODAL --- */}
+      <Modal
+        isOpen={showEmergencyModal}
+        onClose={() => setShowEmergencyModal(false)}
+        title="Acute Emergency Triage SOS"
+        description="Dispatch an immediate clinical triage telemetry alert to critical care staff"
+        icon={AlertTriangle}
+        headerVariant="danger"
+      >
+        <form onSubmit={handleSubmitEmergency} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Heart Rate (BPM)" required>
+              <Input
+                type="number"
+                value={emergencyForm.heart_rate}
+                onChange={e => setEmergencyForm({...emergencyForm, heart_rate: e.target.value})}
+                required
+              />
+            </FormField>
+            <FormField label="Oxygen SpO2 (%)" required>
+              <Input
+                type="number"
+                value={emergencyForm.spo2}
+                onChange={e => setEmergencyForm({...emergencyForm, spo2: e.target.value})}
+                required
+              />
+            </FormField>
           </div>
-        </div>
-      )}
 
-      {/* 2. Patient Comprehensive EHR Modal */}
-      {selectedPatientEhr && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-cyan-400" /> Patient Medical Record (EHR)
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Patient: <span className="text-cyan-400 font-semibold">{selectedPatientEhr.patientName}</span> (ID #{selectedPatientEhr.patientId})
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                {currentUser.role === 'doctor' && (
-                  <button
-                    onClick={() => {
-                      setDoctorClinicalModal({
-                        patient_id: selectedPatientEhr.patientId,
-                        patient_name: selectedPatientEhr.patientName,
-                        record_type: 'Physician Clinical Evaluation',
-                        risk_score: 15,
-                        status_level: 'NORMAL',
-                        notes: ''
-                      });
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1"
-                  >
-                    <PlusCircle className="w-3.5 h-3.5" /> Add Note
-                  </button>
-                )}
-                <button onClick={() => setSelectedPatientEhr(null)} className="text-slate-400 hover:text-slate-200">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Blood Pressure" required>
+              <Input
+                type="text"
+                value={emergencyForm.blood_pressure}
+                onChange={e => setEmergencyForm({...emergencyForm, blood_pressure: e.target.value})}
+                required
+              />
+            </FormField>
+            <FormField label="Temperature (°C)" required>
+              <Input
+                type="number"
+                step="0.1"
+                value={emergencyForm.temperature}
+                onChange={e => setEmergencyForm({...emergencyForm, temperature: e.target.value})}
+                required
+              />
+            </FormField>
+          </div>
 
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-              {selectedPatientEhr.records.length === 0 ? (
-                <div className="text-center text-slate-500 py-10 text-xs">No medical records saved for this patient yet.</div>
-              ) : (
-                selectedPatientEhr.records.map(rec => (
-                  <div key={rec.id} className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="font-bold text-cyan-400">{rec.record_type}</span>
-                        <div className="text-[10px] text-slate-500">{rec.created_at}</div>
-                      </div>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        rec.status_level === 'CRITICAL' || rec.status_level === 'HIGH' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'
-                      }`}>
-                        {rec.status_level} ({rec.risk_score}%)
-                      </span>
+          <FormField label="Suspected Acute Symptoms / Diagnosis" required>
+            <Input
+              type="text"
+              value={emergencyForm.diagnosis}
+              onChange={e => setEmergencyForm({...emergencyForm, diagnosis: e.target.value})}
+              required
+            />
+          </FormField>
+
+          <FormField label="Clinical Triage Notes">
+            <Textarea
+              rows={2}
+              value={emergencyForm.triage_notes}
+              onChange={e => setEmergencyForm({...emergencyForm, triage_notes: e.target.value})}
+              placeholder="Record acute patient distress signs, consciousness level..."
+            />
+          </FormField>
+
+          <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+            <Button
+              variant="outline"
+              onClick={() => setShowEmergencyModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="danger"
+              loading={emergencySubmitting}
+              icon={AlertTriangle}
+            >
+              Dispatch Acute Alert
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* --- MODAL 2: PATIENT COMPREHENSIVE EHR MODAL --- */}
+      <Modal
+        isOpen={Boolean(selectedPatientEhr)}
+        onClose={() => setSelectedPatientEhr(null)}
+        title="Patient Electronic Health Record (EHR)"
+        description={selectedPatientEhr ? `Patient: ${selectedPatientEhr.patientName} (ID #${selectedPatientEhr.patientId})` : ''}
+        icon={FileText}
+        maxWidth="max-w-2xl"
+      >
+        <div className="space-y-4">
+          <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+            <span className="text-xs font-semibold text-slate-300">Clinical Evaluation Ledger</span>
+            {currentUser.role === 'doctor' && selectedPatientEhr && (
+              <Button
+                variant="success"
+                size="xs"
+                icon={PlusCircle}
+                onClick={() => setDoctorClinicalModal({
+                  patient_id: selectedPatientEhr.patientId,
+                  patient_name: selectedPatientEhr.patientName,
+                  record_type: 'Physician Clinical Evaluation',
+                  risk_score: 15,
+                  status_level: 'NORMAL',
+                  notes: ''
+                })}
+              >
+                Add Clinical Note
+              </Button>
+            )}
+          </div>
+
+          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1">
+            {selectedPatientEhr && selectedPatientEhr.records.length === 0 ? (
+              <EmptyState
+                icon={FileText}
+                title="No Stored Clinical Records"
+                description="No diagnostic assessments or consultation records found for this patient."
+              />
+            ) : (
+              selectedPatientEhr && selectedPatientEhr.records.map(rec => (
+                <div key={rec.id} className="bg-[#0b0f19] p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="font-bold text-cyan-400">{rec.record_type}</span>
+                      <div className="text-[10px] text-slate-500 font-mono mt-0.5">{rec.created_at}</div>
                     </div>
-                    <div className="space-y-1">
-                      {rec.details.map((d, idx) => (
-                        <div key={idx} className="text-slate-300 bg-slate-900/60 p-2 rounded-lg border border-slate-800/60">{d}</div>
-                      ))}
-                    </div>
+                    <Badge
+                      variant={
+                        rec.status_level === 'CRITICAL' || rec.status_level === 'HIGH' ? 'danger' :
+                        rec.status_level === 'MODERATE' ? 'warning' : 'success'
+                      }
+                      size="sm"
+                      dot
+                    >
+                      {rec.status_level} ({rec.risk_score}%)
+                    </Badge>
                   </div>
-                ))
-              )}
-            </div>
+                  <div className="space-y-1">
+                    {rec.details && rec.details.map((d, idx) => (
+                      <div key={idx} className="text-slate-300 bg-slate-900/60 p-2 rounded-xl border border-slate-800/60 leading-relaxed">
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
-      )}
+      </Modal>
 
-      {/* 3. Doctor Clinical Note Entry Modal */}
-      {doctorClinicalModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111827] border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-                  <Stethoscope className="w-5 h-5 text-emerald-400" /> Record Clinical Evaluation
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Patient: <span className="text-emerald-400 font-semibold">{doctorClinicalModal.patient_name}</span>
-                </p>
-              </div>
-              <button onClick={() => setDoctorClinicalModal(null)} className="text-slate-400 hover:text-slate-200">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleDoctorSaveRecord} className="space-y-3 text-xs">
-              <div>
-                <label className="text-slate-400 block mb-1">Evaluation / Record Type</label>
-                <input
-                  type="text"
-                  value={doctorClinicalModal.record_type}
-                  onChange={e => setDoctorClinicalModal({...doctorClinicalModal, record_type: e.target.value})}
-                  className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                  required
+      {/* --- MODAL 3: DOCTOR CLINICAL EVALUATION NOTE MODAL --- */}
+      <Modal
+        isOpen={Boolean(doctorClinicalModal)}
+        onClose={() => setDoctorClinicalModal(null)}
+        title="Record Clinical Evaluation"
+        description={doctorClinicalModal ? `Patient: ${doctorClinicalModal.patient_name}` : ''}
+        icon={Stethoscope}
+        headerVariant="success"
+      >
+        {doctorClinicalModal && (
+          <form onSubmit={handleDoctorSaveRecord} className="space-y-4">
+            <FormField label="Evaluation / Encounter Type" required>
+              <Input
+                type="text"
+                value={doctorClinicalModal.record_type}
+                onChange={e => setDoctorClinicalModal({...doctorClinicalModal, record_type: e.target.value})}
+                required
+              />
+            </FormField>
+
+            <div className="grid grid-cols-2 gap-3">
+              <FormField label="Acuity Severity">
+                <Select
+                  value={doctorClinicalModal.status_level}
+                  onChange={e => setDoctorClinicalModal({...doctorClinicalModal, status_level: e.target.value})}
+                >
+                  <option value="NORMAL">NORMAL</option>
+                  <option value="MODERATE">MODERATE</option>
+                  <option value="HIGH">HIGH</option>
+                  <option value="CRITICAL">CRITICAL</option>
+                </Select>
+              </FormField>
+
+              <FormField label="Assessed Risk Score (0-100)">
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={doctorClinicalModal.risk_score}
+                  onChange={e => setDoctorClinicalModal({...doctorClinicalModal, risk_score: e.target.value})}
                 />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-slate-400 block mb-1">Status Severity</label>
-                  <select
-                    value={doctorClinicalModal.status_level}
-                    onChange={e => setDoctorClinicalModal({...doctorClinicalModal, status_level: e.target.value})}
-                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                  >
-                    <option value="NORMAL">NORMAL</option>
-                    <option value="MODERATE">MODERATE</option>
-                    <option value="HIGH">HIGH</option>
-                    <option value="CRITICAL">CRITICAL</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-slate-400 block mb-1">Assessed Risk Score (0-100)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={doctorClinicalModal.risk_score}
-                    onChange={e => setDoctorClinicalModal({...doctorClinicalModal, risk_score: e.target.value})}
-                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-slate-400 block mb-1">Physician Clinical Notes & Recommendations</label>
-                <textarea
-                  rows="3"
-                  value={doctorClinicalModal.notes}
-                  onChange={e => setDoctorClinicalModal({...doctorClinicalModal, notes: e.target.value})}
-                  placeholder="Record symptoms, diagnostic notes, treatment plan, and prescription..."
-                  className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
-                  required
-                ></textarea>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setDoctorClinicalModal(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-all shadow-lg"
-                >
-                  Save to EHR
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </FormField>
+            </div>
+
+            <FormField label="Physician Findings & Treatment Plan" required>
+              <Textarea
+                rows={3}
+                value={doctorClinicalModal.notes}
+                onChange={e => setDoctorClinicalModal({...doctorClinicalModal, notes: e.target.value})}
+                placeholder="Document clinical diagnosis, medication regimen, and follow-up plan..."
+                required
+              />
+            </FormField>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+              <Button
+                variant="outline"
+                onClick={() => setDoctorClinicalModal(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="success"
+                icon={Check}
+              >
+                Save to Patient EHR
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }

@@ -5,14 +5,18 @@ import {
   Activity, 
   Save, 
   Image as ImageIcon, 
-  RefreshCw, 
   Layers, 
   Stethoscope, 
   Upload, 
   CheckCircle2, 
-  AlertTriangle,
-  Volume2
+  Volume2,
+  Cpu
 } from 'lucide-react';
+import Button from './ui/Button';
+import Badge from './ui/Badge';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
+import { FormField, Input } from './ui/Input';
+import EmptyState from './ui/EmptyState';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -99,268 +103,220 @@ export default function RespiratoryDashboard({ currentUser }) {
     }
   };
 
+  const modalities = [
+    { id: 'ct', label: 'CT-Scan', sub: 'Tumor & Neoplasm', icon: Layers },
+    { id: 'xray', label: 'Chest X-Ray', sub: 'Pneumonia & Infiltrates', icon: ImageIcon },
+    { id: 'ultrasound', label: 'Ultrasound', sub: 'Pleural Effusion', icon: Activity },
+    { id: 'sounds', label: 'Lung Sounds', sub: 'Auscultation Audio', icon: Volume2 },
+    { id: 'vitals', label: 'Vital Signs', sub: 'SpO2, BPM & Temp', icon: Stethoscope },
+  ];
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Input Selection Panel */}
-      <div className="lg:col-span-6 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-5">
-        <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
-          <Wind className="w-6 h-6 text-cyan-400" />
-          <div>
-            <h2 className="text-base font-semibold text-slate-100">AI Respiratory Diagnostic Center</h2>
-            <p className="text-xs text-slate-400">Select an available modality to run targeted AI evaluation</p>
-          </div>
-        </div>
-
-        {/* Diagnostic Modality Selector Tabs */}
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => handleTabChange('ct')}
-            className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
-              testType === 'ct'
-                ? 'border-cyan-500 bg-cyan-950/30 text-slate-100'
-                : 'border-slate-800 bg-[#0b0f19] text-slate-400 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Layers className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs font-bold">CT-Scan</span>
-            </div>
-            <span className="text-[10px] text-slate-400">Tumor & Cancer</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTabChange('xray')}
-            className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
-              testType === 'xray'
-                ? 'border-cyan-500 bg-cyan-950/30 text-slate-100'
-                : 'border-slate-800 bg-[#0b0f19] text-slate-400 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <ImageIcon className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs font-bold">Chest X-Ray</span>
-            </div>
-            <span className="text-[10px] text-slate-400">Pneumonia</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTabChange('ultrasound')}
-            className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
-              testType === 'ultrasound'
-                ? 'border-cyan-500 bg-cyan-950/30 text-slate-100'
-                : 'border-slate-800 bg-[#0b0f19] text-slate-400 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Activity className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs font-bold">Ultrasound</span>
-            </div>
-            <span className="text-[10px] text-slate-400">Effusion</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTabChange('sounds')}
-            className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
-              testType === 'sounds'
-                ? 'border-cyan-500 bg-cyan-950/30 text-slate-100'
-                : 'border-slate-800 bg-[#0b0f19] text-slate-400 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Volume2 className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs font-bold">Lung Sounds</span>
-            </div>
-            <span className="text-[10px] text-slate-400">Auscultation Audio</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleTabChange('vitals')}
-            className={`col-span-2 p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
-              testType === 'vitals'
-                ? 'border-cyan-500 bg-cyan-950/30 text-slate-100'
-                : 'border-slate-800 bg-[#0b0f19] text-slate-400 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <Stethoscope className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs font-bold">Vital Signs</span>
-            </div>
-            <span className="text-[10px] text-slate-400">SpO2, Temp, BPM & Resp Rate</span>
-          </button>
-        </div>
-
-        {/* Dynamic Modality Form */}
-        <form onSubmit={handleAnalyze} className="space-y-4 pt-2">
-          {testType === 'sounds' ? (
-            <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-2xl p-6 text-center cursor-pointer bg-[#0b0f19] relative transition-all">
-              <input
-                key={testType}
-                type="file"
-                accept="audio/*,.wav,.mp3"
-                onChange={(e) => e.target.files?.[0] && setSelectedFile(e.target.files[0])}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              />
-              <Volume2 className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
-              <span className="text-xs text-slate-200 font-medium block">
-                {selectedFile ? selectedFile.name : 'Click or drag Lung Sound Audio file'}
-              </span>
-              <span className="text-[10px] text-slate-500 block mt-1">Supports WAV, MP3 formats</span>
-            </div>
-          ) : testType !== 'vitals' ? (
-            <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/50 rounded-2xl p-6 text-center cursor-pointer bg-[#0b0f19] relative transition-all">
-              <input
-                key={testType}
-                type="file"
-                accept="image/*"
-                onChange={(e) => e.target.files?.[0] && setSelectedFile(e.target.files[0])}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              />
-              <Upload className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
-              <span className="text-xs text-slate-200 font-medium block">
-                {selectedFile ? selectedFile.name : `Click or drag image for ${testType.toUpperCase()} assessment`}
-              </span>
-              <span className="text-[10px] text-slate-500 block mt-1">Supports PNG, JPG, JPEG</span>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 bg-[#0b0f19] p-4 rounded-xl border border-slate-800">
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Oxygen Saturation (SpO2 %)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={vitals.spo2}
-                  onChange={(e) => setVitals({ ...vitals, spo2: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#111827] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
-                />
+    <div className="space-y-6">
+      {/* Modality Selector Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+        {modalities.map((m) => {
+          const Icon = m.icon;
+          const isActive = testType === m.id;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => handleTabChange(m.id)}
+              className={`p-3 rounded-2xl border text-left transition-all duration-150 flex flex-col justify-between ${
+                isActive
+                  ? 'bg-cyan-600/10 border-cyan-500/50 text-white shadow-sm shadow-cyan-950/40'
+                  : 'bg-[#0f172a]/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-400' : 'text-slate-500'}`} />
+                <span className={`text-xs font-semibold ${isActive ? 'text-cyan-300' : 'text-slate-200'}`}>{m.label}</span>
               </div>
-
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Body Temp (°C)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={vitals.temp}
-                  onChange={(e) => setVitals({ ...vitals, temp: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-[#111827] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Heart Rate (BPM)</label>
-                <input
-                  type="number"
-                  value={vitals.heart_rate}
-                  onChange={(e) => setVitals({ ...vitals, heart_rate: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[#111827] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] text-slate-400 block mb-1">Respiration Rate (RPM)</label>
-                <input
-                  type="number"
-                  value={vitals.resp_rate}
-                  onChange={(e) => setVitals({ ...vitals, resp_rate: parseInt(e.target.value) || 0 })}
-                  className="w-full bg-[#111827] border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
-                />
-              </div>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-semibold py-3 rounded-xl transition-all text-sm flex items-center justify-center gap-2 mt-4 cursor-pointer"
-          >
-            {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Activity className="w-4 h-4" />}
-            {loading ? 'Analyzing Data...' : `Run ${testType.toUpperCase()} AI Diagnosis`}
-          </button>
-        </form>
+              <span className="text-[10px] text-slate-500 truncate">{m.sub}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Output Results Panel */}
-      <div className="lg:col-span-6 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-        <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-cyan-400" /> AI Diagnostic Output
-        </h2>
-
-        {!result && !loading && (
-          <div className="text-center py-24 text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
-            Select a test type and submit medical input to execute diagnostic analysis.
-          </div>
-        )}
-
-        {loading && (
-          <div className="text-center py-24 text-slate-400 text-xs space-y-3">
-            <RefreshCw className="w-8 h-8 animate-spin text-cyan-400 mx-auto" />
-            <p>Evaluating AI deep learning model for {testType.toUpperCase()} input...</p>
-          </div>
-        )}
-
-        {result && !loading && (
-          <div className="space-y-4">
-            <div className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 space-y-3">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="text-xs text-slate-400">Diagnosis Finding</div>
-                  <div className="text-lg font-bold text-slate-100 mt-0.5">{result.diagnosis}</div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column: Input Panel */}
+        <Card className="lg:col-span-5">
+          <CardHeader>
+            <div>
+              <CardTitle icon={Wind}>Respiratory Ingestion Center</CardTitle>
+              <CardDescription>
+                Targeted multimodal diagnostic engine ({testType.toUpperCase()} modality)
+              </CardDescription>
+            </div>
+            <Badge variant="info" size="sm" dot>Engine Ready</Badge>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleAnalyze} className="space-y-4">
+              {testType === 'sounds' ? (
+                <FormField label="Lung Auscultation Audio File">
+                  <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/40 rounded-2xl p-6 text-center bg-[#0b0f19] relative transition-all cursor-pointer group">
+                    <input
+                      key={testType}
+                      type="file"
+                      accept="audio/*,.wav,.mp3"
+                      onChange={(e) => e.target.files?.[0] && setSelectedFile(e.target.files[0])}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                    <div className="w-10 h-10 rounded-xl bg-slate-800/80 group-hover:bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-2 transition-colors">
+                      <Volume2 className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs text-slate-200 font-medium block">
+                      {selectedFile ? selectedFile.name : 'Click or drag Lung Sound Audio file'}
+                    </span>
+                    <span className="text-[10px] text-slate-500 block mt-1 font-mono">Supports WAV, MP3 formats</span>
+                  </div>
+                </FormField>
+              ) : testType !== 'vitals' ? (
+                <FormField label={`Radiographic Scan (${testType.toUpperCase()})`}>
+                  <div className="border-2 border-dashed border-slate-800 hover:border-cyan-500/40 rounded-2xl p-6 text-center bg-[#0b0f19] relative transition-all cursor-pointer group">
+                    <input
+                      key={testType}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => e.target.files?.[0] && setSelectedFile(e.target.files[0])}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                    <div className="w-10 h-10 rounded-xl bg-slate-800/80 group-hover:bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-2 transition-colors">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs text-slate-200 font-medium block">
+                      {selectedFile ? selectedFile.name : `Click or drag scan for ${testType.toUpperCase()} evaluation`}
+                    </span>
+                    <span className="text-[10px] text-slate-500 block mt-1 font-mono">Supports PNG, JPG, JPEG</span>
+                  </div>
+                </FormField>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField label="Oxygen Saturation (SpO2 %)" hint="Target: 95-100%">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={vitals.spo2}
+                        onChange={(e) => setVitals({ ...vitals, spo2: parseFloat(e.target.value) || 0 })}
+                      />
+                    </FormField>
+                    <FormField label="Body Temperature (°C)" hint="Normal: 36.5 - 37.5">
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={vitals.temp}
+                        onChange={(e) => setVitals({ ...vitals, temp: parseFloat(e.target.value) || 0 })}
+                      />
+                    </FormField>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField label="Heart Rate (BPM)" hint="Resting: 60 - 100">
+                      <Input
+                        type="number"
+                        value={vitals.heart_rate}
+                        onChange={(e) => setVitals({ ...vitals, heart_rate: parseInt(e.target.value) || 0 })}
+                      />
+                    </FormField>
+                    <FormField label="Respiration Rate (RPM)" hint="Normal: 12 - 20">
+                      <Input
+                        type="number"
+                        value={vitals.resp_rate}
+                        onChange={(e) => setVitals({ ...vitals, resp_rate: parseInt(e.target.value) || 0 })}
+                      />
+                    </FormField>
+                  </div>
                 </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
-                    result.risk_level === 'HIGH'
-                      ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                      : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  }`}
-                >
-                  {result.risk_level === 'HIGH' ? <AlertTriangle className="w-3 h-3" /> : <CheckCircle2 className="w-3 h-3" />}
-                  Risk: {result.risk_level} ({typeof result.confidence === 'number' ? (result.confidence * 100).toFixed(1) + '%' : result.confidence})
-                </span>
+              )}
+
+              <Button
+                type="submit"
+                loading={loading}
+                icon={Cpu}
+                className="w-full"
+              >
+                {loading ? 'Analyzing Biomarkers...' : `Execute ${testType.toUpperCase()} AI Diagnosis`}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* Right Column: Diagnostic Output */}
+        <Card className="lg:col-span-7 flex flex-col justify-center">
+          {!result ? (
+            <EmptyState
+              icon={Wind}
+              title="Awaiting Pulmonary Telemetry"
+              description="Select a diagnostic modality on the left and submit scan or vital parameters to run AI assessment."
+            />
+          ) : (
+            <CardContent className="space-y-5">
+              <div className="p-4 rounded-2xl bg-[#0b0f19] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
+                    Pulmonary Clinical Finding
+                  </span>
+                  <div className="text-base font-bold text-slate-100 mt-0.5">{result.diagnosis}</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={result.risk_level === 'HIGH' ? 'danger' : 'success'}
+                    size="lg"
+                    dot
+                  >
+                    Risk: {result.risk_level}
+                  </Badge>
+                  {result.confidence && (
+                    <Badge variant="info" size="lg">
+                      {typeof result.confidence === 'number' ? (result.confidence * 100).toFixed(1) + '%' : result.confidence} Conf.
+                    </Badge>
+                  )}
+                </div>
               </div>
 
               {result.details && (
-                <div className="border-t border-slate-800 pt-3 space-y-2">
-                  <div className="text-xs font-semibold text-cyan-400">Diagnostic Breakdown:</div>
+                <div className="space-y-2.5 bg-[#0b0f19] p-4 rounded-2xl border border-slate-800">
+                  <span className="text-xs font-semibold text-cyan-400 block mb-1">
+                    Diagnostic Biomarker Breakdown:
+                  </span>
                   {Array.isArray(result.details) ? (
                     result.details.map((detail, idx) => (
-                      <div key={idx} className="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-lg flex items-start gap-2">
-                        <span className="text-cyan-400 font-bold">•</span>
+                      <div key={idx} className="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80 flex items-start gap-2">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5" />
                         <span>{detail}</span>
                       </div>
                     ))
                   ) : typeof result.details === 'object' ? (
                     Object.entries(result.details).map(([cls, prob], idx) => (
-                      <div key={idx} className="flex justify-between items-center text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-lg">
+                      <div key={idx} className="flex justify-between items-center text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
                         <span className="font-medium text-slate-200">{cls}</span>
-                        <span className="text-cyan-400 font-semibold">{prob}</span>
+                        <span className="text-cyan-400 font-mono font-semibold">{prob}</span>
                       </div>
                     ))
                   ) : (
-                    <div className="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-lg">
+                    <div className="text-xs text-slate-300 bg-slate-900/60 p-2.5 rounded-xl">
                       {result.details}
                     </div>
                   )}
                 </div>
               )}
-            </div>
 
-            {currentUser && (
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  onClick={handleSaveRecord}
-                  className="flex items-center gap-2 bg-slate-800 hover:bg-cyan-600 text-slate-100 text-xs px-4 py-2.5 rounded-xl border border-slate-700 transition-all font-medium cursor-pointer"
-                >
-                  <Save className="w-4 h-4" /> Save Evaluation to Patient EHR
-                </button>
-                {saveStatus && <span className="text-xs text-emerald-400 font-medium">{saveStatus}</span>}
-              </div>
-            )}
-          </div>
-        )}
+              {currentUser && (
+                <div className="space-y-2 pt-2">
+                  <Button
+                    onClick={handleSaveRecord}
+                    variant={saveStatus ? 'successOutline' : 'secondary'}
+                    icon={saveStatus ? CheckCircle2 : Save}
+                    className="w-full"
+                  >
+                    {saveStatus || 'Save Evaluation to Patient EHR'}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
       </div>
     </div>
   );
