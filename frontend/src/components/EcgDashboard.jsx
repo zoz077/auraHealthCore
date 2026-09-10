@@ -189,9 +189,9 @@ export default function EcgDashboard({ currentUser }) {
   return (
     <div className="space-y-6">
       {/* Top Mode Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-white/85 backdrop-blur-md rounded-2xl border border-white/90 shadow-glass">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-card">
         <div className="flex items-center gap-2.5 px-2">
-          <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shadow-sm">
+          <div className="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-500 shadow-neu-sm">
             <Heart className="w-5 h-5" />
           </div>
           <div>
@@ -200,11 +200,11 @@ export default function EcgDashboard({ currentUser }) {
           </div>
         </div>
 
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+        <div className="flex bg-[#f0f4f8] p-1 rounded-xl border border-white/90 shadow-neu-sm text-xs">
           <button
             onClick={() => setAnalysisMode('values')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${
-              analysisMode === 'values' ? 'bg-white text-cyan-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all duration-150 ${
+              analysisMode === 'values' ? 'bg-white text-cyan-900 shadow-[0_2px_6px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/80 -translate-y-0.5' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Sliders className="w-3.5 h-3.5" />
@@ -212,8 +212,8 @@ export default function EcgDashboard({ currentUser }) {
           </button>
           <button
             onClick={() => setAnalysisMode('image')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all ${
-              analysisMode === 'image' ? 'bg-white text-cyan-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all duration-150 ${
+              analysisMode === 'image' ? 'bg-white text-cyan-900 shadow-[0_2px_6px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/80 -translate-y-0.5' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <ImageIcon className="w-3.5 h-3.5" />
@@ -369,7 +369,7 @@ export default function EcgDashboard({ currentUser }) {
             </Badge>
           </CardHeader>
           <CardContent className="space-y-5">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50/30 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+            <div className="p-5 rounded-2xl bg-[#f4f7fa] border border-white/90 shadow-neu-panel flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
                   Electrophysiological Verdict
@@ -390,7 +390,7 @@ export default function EcgDashboard({ currentUser }) {
                 <span>Normal Sinus Rhythm</span>
                 <span>Arrhythmia / Ischemia Threshold</span>
               </div>
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+              <div className="h-2.5 w-full bg-slate-200/70 rounded-full overflow-hidden shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08)]">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
                     diagnosisResult.status === 'NORMAL'
@@ -402,7 +402,7 @@ export default function EcgDashboard({ currentUser }) {
               </div>
             </div>
 
-            <div className="space-y-2.5 bg-white/90 p-4 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="space-y-2.5 bg-white/95 p-4 rounded-2xl border border-slate-200/70 shadow-[0_2px_8px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]">
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
                 <ShieldCheck className="w-4 h-4 text-cyan-600" />
                 <span>Clinical Interpretation & Diagnostic Notes</span>

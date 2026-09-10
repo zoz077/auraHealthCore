@@ -123,14 +123,14 @@ export default function RespiratoryDashboard({ currentUser }) {
               key={m.id}
               type="button"
               onClick={() => handleTabChange(m.id)}
-              className={`p-3 rounded-2xl border text-left transition-all duration-150 flex flex-col justify-between ${
+              className={`p-3 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between ${
                 isActive
-                  ? 'bg-gradient-to-r from-teal-50 to-cyan-50/80 border-cyan-400/60 text-cyan-950 font-semibold shadow-[0_4px_12px_rgba(6,182,212,0.12)]'
-                  : 'bg-white/85 border-slate-200/90 text-slate-600 hover:text-slate-900 hover:border-slate-300 shadow-sm'
+                  ? 'bg-gradient-to-r from-teal-50 to-cyan-50/90 border-cyan-400/60 text-cyan-950 font-semibold shadow-[0_4px_12px_rgba(6,182,212,0.14)] -translate-y-0.5'
+                  : 'bg-[#f0f4f8] border-white/90 text-slate-600 hover:text-slate-900 shadow-neu-sm hover:shadow-neu-flat hover:-translate-y-0.5'
               }`}
             >
               <div className="flex items-center gap-2 mb-1">
-                <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-700' : 'text-slate-400'}`} />
+                <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-700' : 'text-slate-500'}`} />
                 <span className={`text-xs font-semibold ${isActive ? 'text-cyan-900' : 'text-slate-800'}`}>{m.label}</span>
               </div>
               <span className="text-[10px] text-slate-500 truncate">{m.sub}</span>
@@ -252,7 +252,7 @@ export default function RespiratoryDashboard({ currentUser }) {
             />
           ) : (
             <CardContent className="space-y-5">
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50/30 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+              <div className="p-5 rounded-2xl bg-[#f4f7fa] border border-white/90 shadow-neu-panel flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
                     Pulmonary Clinical Finding
@@ -276,7 +276,7 @@ export default function RespiratoryDashboard({ currentUser }) {
               </div>
 
               {result.details && (
-                <div className="space-y-2.5 bg-white/90 p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="space-y-2.5 bg-white/95 p-4 rounded-2xl border border-slate-200/70 shadow-[0_2px_8px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]">
                   <span className="text-xs font-semibold text-cyan-700 block mb-1">
                     Diagnostic Biomarker Breakdown:
                   </span>

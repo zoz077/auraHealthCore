@@ -127,7 +127,7 @@ export default function IcuDashboard({ currentUser }) {
           />
         ) : (
           <CardContent className="space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50/30 border border-slate-100 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#f4f7fa] border border-white/90 shadow-neu-panel">
               <div>
                 <span className="text-[11px] uppercase tracking-wider text-slate-500 font-medium block">
                   Calculated Decompensation Risk
@@ -156,7 +156,7 @@ export default function IcuDashboard({ currentUser }) {
                 <span>Moderate</span>
                 <span>High Decompensation</span>
               </div>
-              <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden flex shadow-inner">
+              <div className="h-2.5 w-full bg-slate-200/70 rounded-full overflow-hidden flex shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08)]">
                 <div
                   className={`transition-all duration-500 rounded-full ${
                     result.status_level === 'HIGH'
@@ -177,7 +177,7 @@ export default function IcuDashboard({ currentUser }) {
                 {result.details.map((d, i) => (
                   <div
                     key={i}
-                    className="text-xs bg-white/90 p-3.5 rounded-xl border border-slate-100 text-slate-700 shadow-sm leading-relaxed flex items-start gap-2.5"
+                    className="text-xs bg-white/95 p-3.5 rounded-xl border border-slate-200/70 text-slate-700 shadow-[0_2px_6px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] leading-relaxed flex items-start gap-2.5 transition-all hover:border-slate-300"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
                     <span>{d}</span>

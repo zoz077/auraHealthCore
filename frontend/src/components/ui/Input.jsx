@@ -31,12 +31,12 @@ export function Input({
       )}
       <input
         type={type}
-        className={`w-full bg-white/90 border rounded-xl py-2.5 px-3.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/10 focus:border-cyan-500 transition-all shadow-[inset_1px_1px_2px_rgba(0,0,0,0.02)] ${
+        className={`w-full bg-white/95 border rounded-xl py-2.5 px-3.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/15 focus:border-cyan-500 transition-all shadow-[inset_1px_1px_3px_rgba(166,180,200,0.22),inset_0_1px_1px_rgba(0,0,0,0.03)] ${
           Icon ? 'pl-9' : ''
         } ${
           hasError
-            ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-500'
-            : 'border-slate-200 hover:border-slate-300'
+            ? 'border-rose-300 focus:ring-rose-500/15 focus:border-rose-500'
+            : 'border-slate-200/90 hover:border-slate-300'
         } ${className}`}
         {...props}
       />
@@ -52,10 +52,10 @@ export function Select({
 }) {
   return (
     <select
-      className={`w-full bg-white/90 border rounded-xl py-2.5 px-3.5 text-xs text-slate-800 focus:outline-none focus:ring-4 focus:ring-cyan-500/10 focus:border-cyan-500 transition-all shadow-[inset_1px_1px_2px_rgba(0,0,0,0.02)] ${
+      className={`w-full bg-white/95 border rounded-xl py-2.5 px-3.5 text-xs text-slate-800 focus:outline-none focus:ring-4 focus:ring-cyan-500/15 focus:border-cyan-500 transition-all shadow-[inset_1px_1px_3px_rgba(166,180,200,0.22),inset_0_1px_1px_rgba(0,0,0,0.03)] ${
         hasError
-          ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-500'
-          : 'border-slate-200 hover:border-slate-300'
+          ? 'border-rose-300 focus:ring-rose-500/15 focus:border-rose-500'
+          : 'border-slate-200/90 hover:border-slate-300'
       } ${className}`}
       {...props}
     >
@@ -73,10 +73,10 @@ export function Textarea({
   return (
     <textarea
       rows={rows}
-      className={`w-full bg-white/90 border rounded-xl p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/10 focus:border-cyan-500 transition-all resize-y shadow-[inset_1px_1px_2px_rgba(0,0,0,0.02)] ${
+      className={`w-full bg-white/95 border rounded-xl p-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-cyan-500/15 focus:border-cyan-500 transition-all resize-y shadow-[inset_1px_1px_3px_rgba(166,180,200,0.22),inset_0_1px_1px_rgba(0,0,0,0.03)] ${
         hasError
-          ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-500'
-          : 'border-slate-200 hover:border-slate-300'
+          ? 'border-rose-300 focus:ring-rose-500/15 focus:border-rose-500'
+          : 'border-slate-200/90 hover:border-slate-300'
       } ${className}`}
       {...props}
     />

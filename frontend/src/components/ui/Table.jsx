@@ -2,7 +2,7 @@ import React from 'react';
 
 export function Table({ children, className = '', ...props }) {
   return (
-    <div className="w-full overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/70 backdrop-blur-sm shadow-sm">
+    <div className="w-full overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/95 backdrop-blur-md shadow-card">
       <table className={`w-full text-left text-xs border-collapse ${className}`} {...props}>
         {children}
       </table>
@@ -12,7 +12,7 @@ export function Table({ children, className = '', ...props }) {
 
 export function TableHeader({ children, className = '', ...props }) {
   return (
-    <thead className={`bg-slate-50/90 border-b border-slate-100 text-slate-500 uppercase text-[11px] font-semibold tracking-wider select-none ${className}`} {...props}>
+    <thead className={`bg-slate-50/95 border-b border-slate-200/60 text-slate-500 uppercase text-[11px] font-semibold tracking-wider select-none ${className}`} {...props}>
       {children}
     </thead>
   );

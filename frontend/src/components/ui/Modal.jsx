@@ -49,13 +49,13 @@ export default function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative w-full ${maxWidth} bg-white/95 backdrop-blur-xl border border-white/90 rounded-3xl shadow-[0_25px_60px_-15px_rgba(15,23,42,0.18)] overflow-hidden transform transition-all duration-200 animate-in fade-in-0 zoom-in-95 my-8 ${className}`}
+        className={`relative w-full ${maxWidth} bg-white/98 backdrop-blur-xl border border-white/90 rounded-3xl shadow-[0_25px_60px_-15px_rgba(15,23,42,0.22),0_10px_20px_-5px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,1)] overflow-hidden transform transition-all duration-200 animate-in fade-in-0 zoom-in-95 my-8 ${className}`}
       >
         {/* Header */}
         <div className="p-5 border-b border-slate-100/90 flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
             {Icon && (
-              <div className={`p-2 rounded-xl border ${iconColors[headerVariant] || iconColors.default} shrink-0 mt-0.5`}>
+              <div className={`p-2 rounded-xl border ${iconColors[headerVariant] || iconColors.default} shadow-neu-sm shrink-0 mt-0.5`}>
                 <Icon className="w-4 h-4" />
               </div>
             )}

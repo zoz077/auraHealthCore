@@ -459,29 +459,30 @@ export default function App() {
   // Render Login / Registration Screen
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
-        {/* Ambient background glows */}
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-cyan-200/40 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-200/30 rounded-full blur-3xl pointer-events-none" />
+      <div className="min-h-screen bg-[#f1f5f9] flex flex-col justify-center items-center p-4 sm:p-6 relative overflow-hidden">
+        {/* Ambient atmospheric shapes for subtle depth */}
+        <div className="absolute -top-32 -left-32 w-[450px] h-[450px] bg-cyan-100/40 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 -right-32 w-[400px] h-[400px] bg-teal-100/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-32 left-1/3 w-[500px] h-[500px] bg-slate-200/50 rounded-full blur-3xl pointer-events-none" />
 
         <div className="w-full max-w-md relative z-10 space-y-6">
           {/* Brand Header */}
           <div className="text-center space-y-2">
-            <div className="inline-flex p-3 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 text-white mb-2 shadow-md shadow-cyan-900/10">
+            <div className="inline-flex p-3.5 rounded-2xl bg-gradient-to-r from-teal-600 to-cyan-600 text-white mb-2 shadow-[0_6px_20px_rgba(13,148,136,0.3),inset_0_1px_0_rgba(255,255,255,0.3)]">
               <HeartPulse className="w-7 h-7" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">AuraHealth Core</h1>
             <p className="text-xs text-slate-500">Clinical Artificial Intelligence & Hospital Operations Platform</p>
           </div>
 
-          <Card className="bg-white/90 backdrop-blur-xl border border-white shadow-glass-lg rounded-3xl">
+          <Card className="bg-white/98 backdrop-blur-xl border border-slate-200/80 shadow-glass-lg rounded-3xl">
             <CardHeader className="text-center pb-2">
-              <div className="w-full flex items-center justify-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200/80">
+              <div className="w-full flex items-center justify-center gap-1.5 p-1 bg-[#f0f4f8] rounded-2xl border border-white/90 shadow-neu-sm">
                 <button
                   onClick={() => { setAuthMode('login'); setAuthError(''); }}
-                  className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
+                  className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-150 ${
                     authMode === 'login'
-                      ? 'bg-white text-cyan-950 shadow-sm font-bold'
+                      ? 'bg-white text-cyan-950 shadow-[0_2px_6px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/80 font-bold -translate-y-0.5'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -489,9 +490,9 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => { setAuthMode('register'); setAuthError(''); }}
-                  className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all ${
+                  className={`flex-1 py-2 text-xs font-semibold rounded-xl transition-all duration-150 ${
                     authMode === 'register'
-                      ? 'bg-white text-cyan-950 shadow-sm font-bold'
+                      ? 'bg-white text-cyan-950 shadow-[0_2px_6px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/80 font-bold -translate-y-0.5'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
@@ -585,21 +586,26 @@ export default function App() {
 
   // Main Authenticated Portal
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#f1f5f9] text-slate-900 flex flex-col font-sans relative overflow-x-hidden">
       <NotificationToast notifications={activeToasts} onClose={handleCloseToast} />
 
+      {/* Subtle atmospheric background depth forms */}
+      <div className="fixed -top-40 -left-40 w-[500px] h-[500px] bg-cyan-100/35 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="fixed top-1/3 -right-40 w-[450px] h-[450px] bg-teal-100/30 rounded-full blur-3xl pointer-events-none -z-10" />
+      <div className="fixed -bottom-40 left-1/4 w-[600px] h-[600px] bg-slate-200/40 rounded-full blur-3xl pointer-events-none -z-10" />
+
       {/* Top Clinical Header Bar */}
-      <header className="bg-white/85 border-b border-slate-200/80 sticky top-0 z-40 backdrop-blur-xl shadow-sm">
+      <header className="bg-white/92 border-b border-slate-200/80 sticky top-0 z-40 backdrop-blur-xl shadow-[0_4px_20px_-4px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.95)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           {/* Brand & Telemetry Status Beacon */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 flex items-center justify-center text-white shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 flex items-center justify-center text-white shadow-[0_4px_12px_rgba(13,148,136,0.25),inset_0_1px_0_rgba(255,255,255,0.3)]">
               <HeartPulse className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-slate-900 text-sm tracking-tight">AuraHealth Core</span>
-                <span className="hidden sm:inline-flex text-[10px] font-semibold text-cyan-700 bg-cyan-50 border border-cyan-200/80 px-2 py-0.5 rounded-full">
+                <span className="hidden sm:inline-flex text-[10px] font-semibold text-cyan-700 bg-cyan-50 border border-cyan-200/80 px-2 py-0.5 rounded-full shadow-neu-sm">
                   Clinical AI Engine
                 </span>
               </div>
@@ -629,7 +635,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setShowNotifs(!showNotifs)}
-                className="p-2.5 bg-[#f0f4f8] hover:bg-[#e8eff6] rounded-xl relative text-slate-600 hover:text-slate-900 border border-white/80 shadow-[2px_2px_6px_#e2e8f0,-2px_-2px_6px_#ffffff] transition-all focus:outline-none"
+                className="p-2.5 bg-[#f0f4f8] hover:bg-[#e8eff6] rounded-xl relative text-slate-600 hover:text-slate-900 border border-white/90 shadow-neu-sm hover:shadow-neu-flat transition-all duration-150 focus:outline-none hover:-translate-y-0.5 active:translate-y-0.5"
                 title="View In-App Notifications"
                 aria-label="Notifications"
               >
@@ -707,7 +713,7 @@ export default function App() {
             <button
               onClick={handleLogout}
               title="Sign Out of Portal"
-              className="p-2.5 bg-[#f0f4f8] hover:bg-rose-50 hover:text-rose-600 rounded-xl text-slate-500 border border-white/80 shadow-[2px_2px_6px_#e2e8f0,-2px_-2px_6px_#ffffff] transition-all focus:outline-none"
+              className="p-2.5 bg-[#f0f4f8] hover:bg-rose-50 hover:text-rose-600 rounded-xl text-slate-500 border border-white/90 shadow-neu-sm hover:shadow-neu-flat transition-all duration-150 focus:outline-none hover:-translate-y-0.5 active:translate-y-0.5"
               aria-label="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -716,45 +722,45 @@ export default function App() {
         </div>
 
         {/* Secondary Workspace Sub-Navigation Tabs */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1.5 overflow-x-auto py-2 scrollbar-none border-t border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center gap-1.5 overflow-x-auto py-2.5 scrollbar-none border-t border-slate-200/60">
           {currentUser.role === 'patient' && (
             <>
               <button
                 onClick={() => setActiveTab('booking')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   activeTab === 'booking'
-                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5" /> Appointments
                 {patientAppointments.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-100 text-cyan-800 text-[10px] font-mono font-semibold">
+                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-100 text-cyan-800 text-[10px] font-mono font-semibold shadow-neu-sm">
                     {patientAppointments.length}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => setActiveTab('profile')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   activeTab === 'profile'
-                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
                 }`}
               >
                 <User className="w-3.5 h-3.5" /> My Profile
               </button>
               <button
                 onClick={() => setActiveTab('records')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   activeTab === 'records'
-                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" /> Medical Records
                 {medicalRecords.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-semibold">
+                  <span className="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-mono font-semibold shadow-neu-sm">
                     {medicalRecords.length}
                   </span>
                 )}
@@ -767,30 +773,30 @@ export default function App() {
             <>
               <button
                 onClick={() => setActiveTab('queue')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   activeTab === 'queue'
-                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
                 }`}
               >
                 <Stethoscope className="w-3.5 h-3.5" /> Clinic Queue
                 {doctorQueue.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-100 text-cyan-800 text-[10px] font-mono font-semibold">
+                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-100 text-cyan-800 text-[10px] font-mono font-semibold shadow-neu-sm">
                     {doctorQueue.length}
                   </span>
                 )}
               </button>
               <button
                 onClick={() => setActiveTab('emergencies')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   activeTab === 'emergencies'
-                    ? 'bg-white text-rose-700 shadow-sm border border-rose-200/90'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    ? 'bg-white text-rose-700 shadow-[0_2px_8px_rgba(244,63,94,0.08),inset_0_1px_0_rgba(255,255,255,1)] border border-rose-200/90 font-bold -translate-y-0.5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
                 }`}
               >
                 <AlertTriangle className="w-3.5 h-3.5" /> Acute Triage Feed
                 {emergencyRecords.length > 0 && (
-                  <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[10px] font-mono font-semibold">
+                  <span className="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[10px] font-mono font-semibold shadow-neu-sm">
                     {emergencyRecords.length}
                   </span>
                 )}
@@ -803,20 +809,20 @@ export default function App() {
             <>
               <button
                 onClick={() => setActiveTab('admin')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   activeTab === 'admin'
-                    ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
                 }`}
               >
                 <ShieldCheck className="w-3.5 h-3.5" /> Hospital Operations
               </button>
               <button
                 onClick={() => setActiveTab('emergencies')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all duration-150 whitespace-nowrap ${
                   activeTab === 'emergencies'
-                    ? 'bg-white text-rose-700 shadow-sm border border-rose-200/90'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                    ? 'bg-white text-rose-700 shadow-[0_2px_8px_rgba(244,63,94,0.08),inset_0_1px_0_rgba(255,255,255,1)] border border-rose-200/90 font-bold -translate-y-0.5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
                 }`}
               >
                 <AlertTriangle className="w-3.5 h-3.5" /> Emergency Triage Feed
@@ -828,50 +834,50 @@ export default function App() {
           {/* AI Diagnostic Workstations (Available to all authorized roles) */}
           <button
             onClick={() => setActiveTab('neurology')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap ${
               activeTab === 'neurology'
-                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
             }`}
           >
             <Brain className="w-3.5 h-3.5 text-cyan-600" /> Neurology AI
           </button>
           <button
             onClick={() => setActiveTab('ecg')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap ${
               activeTab === 'ecg'
-                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
             }`}
           >
             <Heart className="w-3.5 h-3.5 text-rose-500" /> ECG Rhythm
           </button>
           <button
             onClick={() => setActiveTab('icu')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap ${
               activeTab === 'icu'
-                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
             }`}
           >
             <HeartPulse className="w-3.5 h-3.5 text-teal-600" /> ICU Risk AI
           </button>
           <button
             onClick={() => setActiveTab('imaging')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap ${
               activeTab === 'imaging'
-                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
             }`}
           >
             <Layers className="w-3.5 h-3.5 text-cyan-600" /> Radiology AI
           </button>
           <button
             onClick={() => setActiveTab('respiratory')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all whitespace-nowrap ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 whitespace-nowrap ${
               activeTab === 'respiratory'
-                ? 'bg-white text-cyan-900 shadow-sm border border-slate-200/90'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                ? 'bg-white text-cyan-950 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/90 font-bold -translate-y-0.5'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/80 hover:shadow-sm'
             }`}
           >
             <Wind className="w-3.5 h-3.5 text-teal-600" /> Respiratory AI
@@ -912,7 +918,7 @@ export default function App() {
                     {medicalRecords.map((rec) => (
                       <div
                         key={rec.id}
-                        className="bg-white/90 p-4 sm:p-5 rounded-2xl border border-slate-100 shadow-sm space-y-3 transition-all hover:shadow-md"
+                        className="bg-white/95 p-4 sm:p-5 rounded-2xl border border-slate-200/70 shadow-[0_2px_8px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] hover:shadow-[0_6px_18px_rgba(15,23,42,0.07)] hover:-translate-y-0.5 space-y-3 transition-all duration-150"
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                           <div>
@@ -1054,10 +1060,10 @@ export default function App() {
                         onClick={() => setBookingTime(slot.time)}
                         className={`text-[11px] py-2 rounded-xl border font-mono transition-all duration-150 ${
                           !slot.available
-                            ? 'bg-slate-100 border-slate-200 text-slate-400 line-through cursor-not-allowed opacity-50'
+                            ? 'bg-slate-100/70 border-slate-200 text-slate-400 line-through cursor-not-allowed opacity-50'
                             : bookingTime === slot.time
-                            ? 'bg-gradient-to-r from-teal-600 to-cyan-600 border-transparent text-white shadow-sm font-semibold'
-                            : 'bg-white border-slate-200 text-slate-700 hover:border-cyan-400 hover:bg-cyan-50/20'
+                            ? 'bg-gradient-to-r from-teal-600 to-cyan-600 border-transparent text-white shadow-md font-semibold -translate-y-0.5'
+                            : 'bg-[#f0f4f8] border-white/90 text-slate-700 shadow-neu-sm hover:shadow-neu-flat hover:-translate-y-0.5 hover:bg-white'
                         }`}
                       >
                         {slot.time}
@@ -1099,7 +1105,7 @@ export default function App() {
                     {patientAppointments.map(item => (
                       <div
                         key={item.id}
-                        className="bg-white/90 p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        className="bg-white/95 p-4 rounded-2xl border border-slate-200/70 shadow-[0_2px_8px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] hover:shadow-[0_6px_16px_rgba(15,23,42,0.07)] hover:-translate-y-0.5 transition-all duration-150 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
                         <div>
                           <div className="flex items-center gap-2">
@@ -1113,7 +1119,7 @@ export default function App() {
 
                         <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-800 border border-cyan-200">
+                            <span className="text-xs font-bold font-mono px-2.5 py-1 rounded-lg bg-cyan-50 text-cyan-800 border border-cyan-200/80 shadow-neu-sm">
                               Queue #{item.queue_number}
                             </span>
                             <Badge
@@ -1168,19 +1174,19 @@ export default function App() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                  <div className="bg-white/95 p-3.5 rounded-xl border border-slate-200/70 shadow-sm space-y-1">
                     <span className="text-slate-400 block font-mono text-[10px] uppercase">Registered Official Email</span>
                     <span className="text-slate-800 font-medium">{currentUser.email}</span>
                   </div>
-                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                  <div className="bg-white/95 p-3.5 rounded-xl border border-slate-200/70 shadow-sm space-y-1">
                     <span className="text-slate-400 block font-mono text-[10px] uppercase">Assigned Security Role</span>
                     <span className="text-cyan-800 font-semibold uppercase">{currentUser.role}</span>
                   </div>
-                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                  <div className="bg-white/95 p-3.5 rounded-xl border border-slate-200/70 shadow-sm space-y-1">
                     <span className="text-slate-400 block font-mono text-[10px] uppercase">Assigned Clinic / Care Focus</span>
                     <span className="text-slate-800 font-medium">{currentUser.department || 'General Care'}</span>
                   </div>
-                  <div className="bg-slate-50/80 p-3.5 rounded-xl border border-slate-100 space-y-1">
+                  <div className="bg-white/95 p-3.5 rounded-xl border border-slate-200/70 shadow-sm space-y-1">
                     <span className="text-slate-400 block font-mono text-[10px] uppercase">Session Security State</span>
                     <span className="text-emerald-700 font-semibold flex items-center gap-1.5">
                       <Check className="w-3.5 h-3.5" /> HttpOnly Authenticated
@@ -1197,25 +1203,29 @@ export default function App() {
 
             {/* Overview Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Card hover onClick={() => setActiveTab('booking')} className="cursor-pointer">
+              <Card variant="neu" hover onClick={() => setActiveTab('booking')} className="cursor-pointer">
                 <CardContent className="flex items-center justify-between p-5">
                   <div className="space-y-1">
                     <span className="text-xs font-semibold text-slate-500 block">Active Clinic Tickets</span>
                     <div className="text-2xl font-bold font-mono text-cyan-800">{patientAppointments.length}</div>
                     <p className="text-[11px] text-slate-400">Upcoming clinical consults</p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                  <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-neu-sm text-slate-400">
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card hover onClick={() => setActiveTab('records')} className="cursor-pointer">
+              <Card variant="neu" hover onClick={() => setActiveTab('records')} className="cursor-pointer">
                 <CardContent className="flex items-center justify-between p-5">
                   <div className="space-y-1">
                     <span className="text-xs font-semibold text-slate-500 block">Stored EHR Diagnostic Records</span>
                     <div className="text-2xl font-bold font-mono text-emerald-700">{medicalRecords.length}</div>
                     <p className="text-[11px] text-slate-400">Saved AI assessments</p>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
+                  <div className="w-9 h-9 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-neu-sm text-slate-400">
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -1250,10 +1260,10 @@ export default function App() {
                   {doctorQueue.map(item => (
                     <div
                       key={item.id}
-                      className="p-4 rounded-2xl bg-white/90 border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:shadow-md"
+                      className="p-4 rounded-2xl bg-white/95 border border-slate-200/70 shadow-[0_2px_8px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] hover:shadow-[0_6px_18px_rgba(15,23,42,0.07)] hover:-translate-y-0.5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-150"
                     >
                       <div className="flex items-center gap-4">
-                        <span className="text-xl font-mono font-bold text-cyan-800 bg-cyan-50 px-3.5 py-2 rounded-xl border border-cyan-200">
+                        <span className="text-xl font-mono font-bold text-cyan-800 bg-cyan-50 px-3.5 py-2 rounded-xl border border-cyan-200/80 shadow-neu-sm">
                           #{item.queue_number}
                         </span>
                         <div>
@@ -1367,7 +1377,7 @@ export default function App() {
                   {emergencyRecords.map(em => (
                     <div
                       key={em.id}
-                      className="bg-white/90 p-5 rounded-2xl border border-rose-200/80 shadow-sm space-y-3.5"
+                      className="bg-white/95 p-5 rounded-2xl border border-rose-200/80 shadow-[0_4px_16px_-2px_rgba(244,63,94,0.08),0_2px_6px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.95)] hover:shadow-[0_8px_24px_-4px_rgba(244,63,94,0.12)] hover:-translate-y-0.5 space-y-3.5 transition-all duration-150"
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
                         <div className="flex items-center gap-2.5">
@@ -1410,7 +1420,7 @@ export default function App() {
                       </div>
 
                       {/* Vital Signs Grid */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-slate-50/80 p-3.5 rounded-xl border border-slate-100">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs bg-[#f4f7fa] p-3.5 rounded-xl border border-white/90 shadow-neu-sm">
                         <div>
                           <span className="text-slate-400 text-[10px] uppercase font-mono block font-medium">Heart Rate</span>
                           <span className="font-mono text-rose-600 font-bold text-sm">{em.heart_rate} bpm</span>
@@ -1449,12 +1459,12 @@ export default function App() {
         {activeTab === 'admin' && (
           <div className="space-y-6">
             {/* Sub-navigation Controls */}
-            <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80 overflow-x-auto">
+            <div className="flex gap-2 p-1.5 bg-[#f0f4f8] rounded-2xl border border-white/90 shadow-neu-sm overflow-x-auto">
               <button
                 onClick={() => setAdminSubTab('doctors')}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
                   adminSubTab === 'doctors'
-                    ? 'bg-white text-cyan-900 shadow-sm'
+                    ? 'bg-white text-cyan-950 shadow-[0_2px_6px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/80 font-bold -translate-y-0.5'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -1462,9 +1472,9 @@ export default function App() {
               </button>
               <button
                 onClick={() => setAdminSubTab('users')}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
                   adminSubTab === 'users'
-                    ? 'bg-white text-cyan-900 shadow-sm'
+                    ? 'bg-white text-cyan-950 shadow-[0_2px_6px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/80 font-bold -translate-y-0.5'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -1472,9 +1482,9 @@ export default function App() {
               </button>
               <button
                 onClick={() => setAdminSubTab('appointments')}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all duration-150 ${
                   adminSubTab === 'appointments'
-                    ? 'bg-white text-cyan-900 shadow-sm'
+                    ? 'bg-white text-cyan-950 shadow-[0_2px_6px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/80 font-bold -translate-y-0.5'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -1564,7 +1574,7 @@ export default function App() {
                       {doctorsList.map(doc => (
                         <div
                           key={doc.id}
-                          className="p-4 rounded-2xl bg-white/90 border border-slate-100 shadow-sm flex items-center justify-between"
+                          className="p-4 rounded-2xl bg-white/95 border border-slate-200/70 shadow-[0_2px_8px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] hover:shadow-[0_6px_16px_rgba(15,23,42,0.07)] hover:-translate-y-0.5 flex items-center justify-between transition-all duration-150"
                         >
                           <div>
                             <div className="text-xs font-bold text-slate-800">{doc.name}</div>

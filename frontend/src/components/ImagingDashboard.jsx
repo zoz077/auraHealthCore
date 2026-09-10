@@ -109,13 +109,13 @@ export default function ImagingDashboard({ currentUser }) {
                 setActiveSubTab(mod.id);
                 handleRemoveImage();
               }}
-              className={`p-4 rounded-2xl border text-left transition-all duration-150 flex items-center gap-3 ${
+              className={`p-4 rounded-2xl border text-left transition-all duration-200 flex items-center gap-3 ${
                 isActive
-                  ? 'bg-gradient-to-r from-teal-50 to-cyan-50/80 border-cyan-400/60 shadow-[0_4px_14px_rgba(6,182,212,0.12)] text-cyan-950 font-semibold'
-                  : 'bg-white/85 border-slate-200/90 text-slate-600 hover:text-slate-900 hover:border-slate-300 shadow-sm'
+                  ? 'bg-gradient-to-r from-teal-50 to-cyan-50/90 border-cyan-400/60 shadow-[0_4px_14px_rgba(6,182,212,0.14)] text-cyan-950 font-semibold -translate-y-0.5'
+                  : 'bg-[#f0f4f8] border-white/90 text-slate-600 hover:text-slate-900 shadow-neu-sm hover:shadow-neu-flat hover:-translate-y-0.5'
               }`}
             >
-              <div className={`p-2.5 rounded-xl border ${isActive ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white border-transparent shadow-sm' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
+              <div className={`p-2.5 rounded-xl border ${isActive ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white border-transparent shadow-sm' : 'bg-white text-slate-500 border-slate-200 shadow-neu-sm'}`}>
                 <Icon className="w-5 h-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -199,7 +199,7 @@ export default function ImagingDashboard({ currentUser }) {
             />
           ) : (
             <CardContent className="space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50/30 border border-slate-100 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-[#f4f7fa] border border-white/90 shadow-neu-panel">
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
                     Diagnostic Modality
@@ -223,7 +223,7 @@ export default function ImagingDashboard({ currentUser }) {
               </div>
 
               {analysisResult.annotated_image && (
-                <div className="bg-slate-50/80 p-3 rounded-2xl border border-slate-200 flex flex-col items-center">
+                <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 shadow-[inset_0_1px_3px_rgba(0,0,0,0.04)] flex flex-col items-center">
                   <div className="text-[10px] text-slate-500 font-mono mb-2 self-start uppercase tracking-wider font-semibold">
                     Computer Vision Feature Map
                   </div>
@@ -235,7 +235,7 @@ export default function ImagingDashboard({ currentUser }) {
                 </div>
               )}
 
-              <div className="space-y-3 bg-white/90 p-4 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="space-y-3 bg-white/95 p-4 rounded-2xl border border-slate-200/70 shadow-[0_2px_8px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]">
                 <div className="text-xs font-semibold text-cyan-700 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-cyan-600" />
                   <span>Primary Finding: {analysisResult.diagnosis || 'Evaluation completed.'}</span>

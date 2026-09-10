@@ -184,7 +184,7 @@ export default function NeurologyDashboard({ currentUser }) {
   return (
     <div className="space-y-6">
       {/* Module Sub-navigation */}
-      <div className="flex flex-wrap gap-2 p-1.5 bg-slate-200/50 rounded-2xl border border-slate-200/60 backdrop-blur-sm">
+      <div className="flex flex-wrap gap-2 p-1.5 bg-[#f0f4f8] rounded-2xl border border-white/90 shadow-neu-sm">
         {subtabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeSubTab === tab.id;
@@ -192,13 +192,13 @@ export default function NeurologyDashboard({ currentUser }) {
             <button
               key={tab.id}
               onClick={() => resetState(tab.id)}
-              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all duration-150 ${
                 isActive
-                  ? 'bg-white text-cyan-900 shadow-[0_2px_8px_rgba(0,0,0,0.06),2px_2px_6px_#e2e8f0]'
+                  ? 'bg-white text-cyan-900 shadow-[0_2px_8px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,1)] border border-slate-200/80 -translate-y-0.5'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className={`w-4 h-4 ${isActive ? 'text-cyan-600' : 'text-slate-400'}`} />
               <span>{tab.label}</span>
             </button>
           );
@@ -414,7 +414,7 @@ export default function NeurologyDashboard({ currentUser }) {
             />
           ) : (
             <CardContent className="space-y-5">
-              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-50 to-cyan-50/30 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+              <div className="p-5 rounded-2xl bg-[#f4f7fa] border border-white/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-neu-panel">
                 <div>
                   <span className="text-[10px] uppercase font-mono tracking-wider text-slate-500 block">
                     Primary Neurological Diagnosis
@@ -433,12 +433,12 @@ export default function NeurologyDashboard({ currentUser }) {
 
               {/* U-Net Tumor Segmentation Info */}
               {result.tumor_area_percentage !== undefined && (
-                <div className="p-4 bg-white/90 rounded-2xl border border-slate-100 space-y-2 shadow-sm">
+                <div className="p-4 bg-white/95 rounded-2xl border border-slate-200/70 space-y-2 shadow-[0_2px_8px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-600 font-medium">U-Net Tumor Area Coverage</span>
                     <span className="font-mono text-rose-600 font-bold">{result.tumor_area_percentage}%</span>
                   </div>
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden shadow-inner">
+                  <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08)]">
                     <div
                       className="bg-gradient-to-r from-amber-500 to-rose-500 h-full rounded-full transition-all duration-500"
                       style={{ width: `${Math.min(100, Math.max(5, result.tumor_area_percentage * 3))}%` }}
@@ -450,7 +450,7 @@ export default function NeurologyDashboard({ currentUser }) {
 
               {/* Probabilities Breakdown */}
               {result.probabilities && (
-                <div className="space-y-2.5 bg-white/90 p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="space-y-2.5 bg-white/95 p-4 rounded-2xl border border-slate-200/70 shadow-[0_2px_8px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)]">
                   <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 mb-2">
                     <ShieldCheck className="w-4 h-4 text-cyan-600" />
                     <span>Differential Probability Distribution</span>
