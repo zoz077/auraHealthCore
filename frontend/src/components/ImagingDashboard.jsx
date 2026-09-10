@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Upload, FileImage, Cpu, CheckCircle2, AlertTriangle, Trash2, Save } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 export default function ImagingDashboard({ currentUser }) {
   const [activeSubTab, setActiveSubTab] = useState('mri');
   const [patientName, setPatientName] = useState(
@@ -56,7 +58,7 @@ export default function ImagingDashboard({ currentUser }) {
     }
 
     try {
-      const res = await axios.post(`http://127.0.0.1:8000${currentModule.endpoint}`, formData, {
+      const res = await axios.post(`${API_BASE_URL}${currentModule.endpoint}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
@@ -74,7 +76,7 @@ export default function ImagingDashboard({ currentUser }) {
   const handleSaveToRecord = async () => {
     if (!analysisResult) return;
     try {
-      await axios.post('http://127.0.0.1:8000/api/medical-records/save', {
+      await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
         patient_id: currentUser?.id,
         record_type: `${currentModule.name} Evaluation`,
         risk_score: analysisResult.confidence || 85,
@@ -83,7 +85,7 @@ export default function ImagingDashboard({ currentUser }) {
       });
       setSavedSuccess(true);
     } catch (err) {
-      alert('Failed to save record.');
+      alert(err.response?.data?.detail || 'Failed to save record to EHR system.');
     }
   };
 

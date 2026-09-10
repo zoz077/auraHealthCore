@@ -473,6 +473,46 @@ def create_doctor(
     db.commit()
     return {"message": "Doctor created successfully"}
 
+@app.get("/api/admin/users")
+def get_all_users(
+    current_user: UserDB = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    users = db.query(UserDB).order_by(UserDB.id.asc()).all()
+    return [
+        {
+            "id": u.id,
+            "full_name": u.full_name,
+            "email": u.email,
+            "role": u.role,
+            "department": getattr(u, "department", None),
+        }
+        for u in users
+    ]
+
+@app.get("/api/admin/appointments")
+def get_all_appointments(
+    current_user: UserDB = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    appointments = db.query(AppointmentDB).order_by(AppointmentDB.id.desc()).all()
+    return [
+        {
+            "id": a.id,
+            "patient_id": a.patient_id,
+            "doctor_id": a.doctor_id,
+            "patient_name": a.patient_name,
+            "doctor_name": a.doctor_name,
+            "department": a.department,
+            "appointment_date": a.appointment_date,
+            "appointment_time": a.appointment_time,
+            "status": a.status,
+            "queue_number": a.queue_number,
+            "created_at": a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else None,
+        }
+        for a in appointments
+    ]
+
 @app.get("/api/doctors")
 def get_doctors(
     department: Optional[str] = None,
@@ -607,6 +647,7 @@ async def book_appointment(
 
     return {
         "message": "Booked successfully",
+        "appointment_id": appointment.id,
         "queue_number": appointment.queue_number,
     }
 
@@ -698,6 +739,81 @@ async def update_appointment_status(
     )
 
     return {"message": "Status updated"}
+
+@app.put("/api/appointments/{app_id}/cancel")
+async def cancel_appointment(
+    app_id: int,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    app_item = db.query(AppointmentDB).filter(AppointmentDB.id == app_id).first()
+    if not app_item:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if current_user.role == "patient":
+        if app_item.patient_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access forbidden: cannot cancel another patient's appointment",
+            )
+        if app_item.status != "WAITING":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Cannot cancel appointment with status '{app_item.status}'",
+            )
+    elif current_user.role == "doctor":
+        if app_item.doctor_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access forbidden: cannot cancel another doctor's appointment",
+            )
+
+    app_item.status = "CANCELLED"
+    db.commit()
+
+    # إعادة ترتيب أرقام قائمة الانتظار للمواعيد المتبقية
+    recompute_queue_numbers(db, app_item.doctor_id, app_item.appointment_date)
+
+    # إشعار لكل من الطبيب والمريض
+    notif_doc = NotificationDB(
+        target_user_id=app_item.doctor_id,
+        title="Appointment Cancelled",
+        message=f"Appointment for patient {app_item.patient_name} ({app_item.appointment_time}) was cancelled.",
+        priority="NORMAL",
+    )
+    notif_pat = NotificationDB(
+        target_user_id=app_item.patient_id,
+        title="Appointment Cancelled",
+        message=f"Your appointment with Dr. {app_item.doctor_name} has been cancelled.",
+        priority="NORMAL",
+    )
+    db.add(notif_doc)
+    db.add(notif_pat)
+    db.commit()
+
+    # إرسال تنبيه مباشر عبر WebSocket
+    await manager.send_personal(
+        app_item.doctor_id,
+        {
+            "id": notif_doc.id,
+            "title": notif_doc.title,
+            "message": notif_doc.message,
+            "priority": notif_doc.priority,
+            "created_at": notif_doc.created_at.strftime("%Y-%m-%d %H:%M"),
+        },
+    )
+    await manager.send_personal(
+        app_item.patient_id,
+        {
+            "id": notif_pat.id,
+            "title": notif_pat.title,
+            "message": notif_pat.message,
+            "priority": notif_pat.priority,
+            "created_at": notif_pat.created_at.strftime("%Y-%m-%d %H:%M"),
+        },
+    )
+
+    return {"message": "Appointment cancelled successfully"}
 
 @app.post("/api/icu/analyze")
 async def analyze_icu_patient(
@@ -793,6 +909,25 @@ def get_patient_medical_records(
         for r in records
     ]
 
+@app.get("/api/medical-records/all")
+def get_all_medical_records(
+    current_user: UserDB = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    records = db.query(MedicalRecordDB).order_by(MedicalRecordDB.id.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "patient_id": r.patient_id,
+            "record_type": r.record_type,
+            "risk_score": r.risk_score,
+            "status_level": r.status_level,
+            "details": json.loads(r.details_json) if r.details_json else [],
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
+        }
+        for r in records
+    ]
+
 # --- إشعارات المستخدم المخزنة ---
 @app.get("/api/notifications")
 def get_my_notifications(
@@ -835,6 +970,18 @@ def mark_notification_read(
     notif.is_read = True
     db.commit()
     return {"message": "Notification marked as read"}
+
+@app.put("/api/notifications/mark-all-read")
+def mark_all_notifications_read(
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    db.query(NotificationDB).filter(
+        NotificationDB.target_user_id == current_user.id,
+        NotificationDB.is_read == False,
+    ).update({NotificationDB.is_read: True})
+    db.commit()
+    return {"message": "All notifications marked as read"}
 
 # --- الطوارئ مع سياسة الأذونات الصارمة ---
 @app.post("/api/v1/emergency/report")
@@ -888,3 +1035,35 @@ async def create_emergency_report(
         await manager.send_personal(target_patient_id, alert_payload)
 
     return {"status": "success", "ehr_id": ehr.id}
+
+@app.get("/api/v1/emergency/records")
+def get_emergency_records(
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role == "patient":
+        records = (
+            db.query(EmergencyEHR)
+            .filter(EmergencyEHR.patient_id == current_user.id)
+            .order_by(EmergencyEHR.id.desc())
+            .all()
+        )
+    else:
+        # الكادر الطبي (الأطباء والمسؤولون) يمكنهم مراجعة كافة حالات الطوارئ
+        records = db.query(EmergencyEHR).order_by(EmergencyEHR.id.desc()).all()
+
+    return [
+        {
+            "id": r.id,
+            "patient_id": r.patient_id,
+            "patient_name": r.patient_name,
+            "heart_rate": r.heart_rate,
+            "spo2": r.spo2,
+            "blood_pressure": r.blood_pressure,
+            "temperature": r.temperature,
+            "triage_notes": r.triage_notes,
+            "diagnosis": r.diagnosis,
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
+        }
+        for r in records
+    ]

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Bone, Brain, Activity, Eye, ActivitySquare, Disc, Camera, Video, UploadCloud } from 'lucide-react';
+import { Bone, Brain, Activity, Eye, ActivitySquare, Disc, Camera, Video, UploadCloud, Save } from 'lucide-react';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -134,6 +134,36 @@ export default function NeurologyDashboard({ currentUser }) {
       alert(err.response?.data?.detail || 'Vision evaluation failed.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveToEHR = async () => {
+    if (!result || !currentUser) return;
+    try {
+      const detailsList = [
+        `Primary Finding: ${result.diagnosis}`,
+        `Confidence Score: ${result.confidence}%`
+      ];
+      if (result.tumor_area_percentage !== undefined) {
+        detailsList.push(`Tumor Area: ${result.tumor_area_percentage}%`);
+      }
+      if (result.probabilities) {
+        const topClasses = Object.entries(result.probabilities)
+          .map(([k, v]) => `${k}: ${v}%`)
+          .join(', ');
+        detailsList.push(`Differential Classes: ${topClasses}`);
+      }
+
+      await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
+        patient_id: currentUser.id,
+        record_type: `Neurology AI (${activeSubTab.toUpperCase()})`,
+        risk_score: parseFloat(result.confidence) || 0,
+        status_level: Number(result.confidence) > 50 ? 'HIGH' : 'NORMAL',
+        details: detailsList
+      });
+      alert('Neurology evaluation successfully saved to patient EHR!');
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to save record to EHR.');
     }
   };
 
@@ -331,6 +361,13 @@ export default function NeurologyDashboard({ currentUser }) {
                   ))}
                 </div>
               )}
+
+              <button
+                onClick={handleSaveToEHR}
+                className="w-full mt-3 bg-slate-800 hover:bg-cyan-600 text-slate-200 border border-slate-700 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+              >
+                <Save className="w-4 h-4 text-cyan-400" /> Save Evaluation to EHR System
+              </button>
             </div>
           ) : (
             <div className="text-center text-slate-500 py-20 text-xs">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Activity, Calendar, ShieldCheck, LogOut, FileText, Stethoscope, Bell, Printer } from 'lucide-react';
+import { Activity, Calendar, ShieldCheck, LogOut, FileText, Stethoscope, Bell, Printer, AlertTriangle, User, Users, Eye, PlusCircle, X, Check, Clock } from 'lucide-react';
 import IcuDashboard from './components/IcuDashboard';
 import ImagingDashboard from './components/ImagingDashboard';
 import EcgDashboard from './components/EcgDashboard';
@@ -50,6 +50,25 @@ export default function App() {
   const [activeToasts, setActiveToasts] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [selectedPrintRecord, setSelectedPrintRecord] = useState(null);
+
+  // Phase 3 State: Emergency, Clinical Records, Admin Overview
+  const [showEmergencyModal, setShowEmergencyModal] = useState(false);
+  const [emergencySubmitting, setEmergencySubmitting] = useState(false);
+  const [emergencyForm, setEmergencyForm] = useState({
+    heart_rate: 98,
+    spo2: 95,
+    blood_pressure: '120/80',
+    temperature: 37.0,
+    triage_notes: '',
+    diagnosis: 'Acute Chest Discomfort',
+    priority: 'CRITICAL'
+  });
+  const [emergencyRecords, setEmergencyRecords] = useState([]);
+  const [selectedPatientEhr, setSelectedPatientEhr] = useState(null);
+  const [doctorClinicalModal, setDoctorClinicalModal] = useState(null);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [adminAppointments, setAdminAppointments] = useState([]);
+  const [adminSubTab, setAdminSubTab] = useState('doctors');
 
   const addNotification = (text, targetUserId, type = 'info') => {
     const newNotif = { 
@@ -177,10 +196,99 @@ export default function App() {
   const refreshData = () => {
     if (!currentUser) return;
     if (currentUser.role === 'patient') {
-      axios.get(`${API_BASE_URL}/api/appointments/patient/${currentUser.id}`).then(res => setPatientAppointments(res.data));
-      axios.get(`${API_BASE_URL}/api/medical-records/patient/${currentUser.id}`).then(res => setMedicalRecords(res.data));
+      axios.get(`${API_BASE_URL}/api/appointments/patient/${currentUser.id}`).then(res => setPatientAppointments(res.data)).catch(console.error);
+      axios.get(`${API_BASE_URL}/api/medical-records/patient/${currentUser.id}`).then(res => setMedicalRecords(res.data)).catch(console.error);
+      axios.get(`${API_BASE_URL}/api/v1/emergency/records`).then(res => setEmergencyRecords(res.data)).catch(console.error);
     } else if (currentUser.role === 'doctor') {
-      axios.get(`${API_BASE_URL}/api/appointments/doctor/${currentUser.id}`).then(res => setDoctorQueue(res.data));
+      axios.get(`${API_BASE_URL}/api/appointments/doctor/${currentUser.id}`).then(res => setDoctorQueue(res.data)).catch(console.error);
+      axios.get(`${API_BASE_URL}/api/v1/emergency/records`).then(res => setEmergencyRecords(res.data)).catch(console.error);
+    } else if (currentUser.role === 'admin') {
+      axios.get(`${API_BASE_URL}/api/admin/users`).then(res => setAdminUsers(res.data)).catch(console.error);
+      axios.get(`${API_BASE_URL}/api/admin/appointments`).then(res => setAdminAppointments(res.data)).catch(console.error);
+      axios.get(`${API_BASE_URL}/api/v1/emergency/records`).then(res => setEmergencyRecords(res.data)).catch(console.error);
+      axios.get(`${API_BASE_URL}/api/doctors`).then(res => setDoctorsList(res.data)).catch(console.error);
+    }
+  };
+
+  const handleCancelAppointment = async (appId) => {
+    if (!confirm('Are you sure you want to cancel this appointment ticket?')) return;
+    try {
+      await axios.put(`${API_BASE_URL}/api/appointments/${appId}/cancel`);
+      addNotification('Appointment cancelled successfully.', currentUser.id, 'info');
+      refreshData();
+      if (selectedDoctor && bookingDate) {
+        axios.get(`${API_BASE_URL}/api/appointments/available-slots`, {
+          params: { doctor_id: selectedDoctor.id, date: bookingDate }
+        }).then(r => setAvailableSlots(r.data)).catch(console.error);
+      }
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to cancel appointment.');
+    }
+  };
+
+  const handleSubmitEmergency = async (e) => {
+    e.preventDefault();
+    setEmergencySubmitting(true);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/v1/emergency/report`, {
+        patient_name: currentUser.full_name,
+        heart_rate: Number(emergencyForm.heart_rate),
+        spo2: Number(emergencyForm.spo2),
+        blood_pressure: emergencyForm.blood_pressure,
+        temperature: Number(emergencyForm.temperature),
+        triage_notes: emergencyForm.triage_notes,
+        diagnosis: emergencyForm.diagnosis || 'Acute Distress',
+        priority: emergencyForm.priority,
+        db_patient_id: currentUser.role === 'patient' ? currentUser.id : null
+      });
+      addNotification(`Emergency alert dispatched (EHR #${res.data.ehr_id})! Clinical staff alerted.`, currentUser.id, 'error');
+      setShowEmergencyModal(false);
+      setEmergencyForm({
+        heart_rate: 98,
+        spo2: 95,
+        blood_pressure: '120/80',
+        temperature: 37.0,
+        triage_notes: '',
+        diagnosis: 'Acute Chest Discomfort',
+        priority: 'CRITICAL'
+      });
+      refreshData();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to dispatch emergency alert.');
+    } finally {
+      setEmergencySubmitting(false);
+    }
+  };
+
+  const handleViewPatientEhr = async (patientId, patientName) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/medical-records/patient/${patientId}`);
+      setSelectedPatientEhr({ patientId, patientName, records: res.data });
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to fetch patient EHR.');
+    }
+  };
+
+  const handleDoctorSaveRecord = async (e) => {
+    e.preventDefault();
+    if (!doctorClinicalModal) return;
+    try {
+      await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
+        patient_id: doctorClinicalModal.patient_id,
+        record_type: doctorClinicalModal.record_type || 'Physician Clinical Evaluation',
+        risk_score: Number(doctorClinicalModal.risk_score) || 0,
+        status_level: doctorClinicalModal.status_level || 'NORMAL',
+        details: [doctorClinicalModal.notes || 'Clinical notes recorded by physician.']
+      });
+      addNotification(`Clinical record recorded for ${doctorClinicalModal.patient_name}`, currentUser.id, 'success');
+      const updatedPatientId = doctorClinicalModal.patient_id;
+      const updatedPatientName = doctorClinicalModal.patient_name;
+      setDoctorClinicalModal(null);
+      if (selectedPatientEhr && selectedPatientEhr.patientId === updatedPatientId) {
+        handleViewPatientEhr(updatedPatientId, updatedPatientName);
+      }
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to save clinical evaluation.');
     }
   };
 
@@ -357,6 +465,7 @@ export default function App() {
           {currentUser.role === 'patient' && (
             <>
               <button onClick={() => setActiveTab('booking')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'booking' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Book Appointment</button>
+              <button onClick={() => setActiveTab('profile')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'profile' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>My Profile</button>
               <button onClick={() => setActiveTab('neurology')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'neurology' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Neurology AI</button>
               <button onClick={() => setActiveTab('ecg')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'ecg' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>ECG AI</button>
               <button onClick={() => setActiveTab('icu')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'icu' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>ICU Risk AI</button>
@@ -370,6 +479,9 @@ export default function App() {
             <>
               <button onClick={() => setActiveTab('queue')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'queue' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
                 My Clinic Queue ({currentUser.department || 'General'})
+              </button>
+              <button onClick={() => setActiveTab('emergencies')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'emergencies' ? 'bg-rose-600 text-white' : 'text-slate-400'}`}>
+                Emergency Alerts
               </button>
               <button onClick={() => setActiveTab('neurology')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'neurology' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>
                 Neurology AI
@@ -390,11 +502,21 @@ export default function App() {
           )}
 
           {currentUser.role === 'admin' && (
-            <button onClick={() => setActiveTab('admin')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'admin' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Admin Management</button>
+            <>
+              <button onClick={() => setActiveTab('admin')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'admin' ? 'bg-cyan-600 text-white' : 'text-slate-400'}`}>Admin Operations</button>
+              <button onClick={() => setActiveTab('emergencies')} className={`px-4 py-2 rounded-lg font-medium ${activeTab === 'emergencies' ? 'bg-rose-600 text-white' : 'text-slate-400'}`}>Emergency Triage</button>
+            </>
           )}
         </div>
 
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowEmergencyModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition-all shadow-sm"
+            title="Dispatch Emergency Triage Alert"
+          >
+            <AlertTriangle className="w-3.5 h-3.5" /> Emergency SOS
+          </button>
           <div className="relative">
             <button onClick={() => setShowNotifs(!showNotifs)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl relative text-slate-300">
               <Bell className="w-4 h-4" />
@@ -575,18 +697,102 @@ export default function App() {
             <div className="lg:col-span-7 bg-[#111827] p-6 rounded-2xl border border-slate-800">
               <h2 className="text-base font-semibold mb-4 text-slate-200">Active Tickets</h2>
               <div className="space-y-3">
+                {patientAppointments.length === 0 && (
+                  <div className="text-xs text-slate-500 py-4 text-center">No active appointment tickets.</div>
+                )}
                 {patientAppointments.map(item => (
                   <div key={item.id} className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 flex justify-between items-center">
                     <div>
                       <div className="text-sm font-bold text-cyan-400">{item.department} Clinic</div>
-                      <div className="text-xs text-slate-400 mt-1">Doctor: {item.doctor_name} | {item.appointment_date}</div>
+                      <div className="text-xs text-slate-400 mt-1">Doctor: {item.doctor_name} | {item.appointment_date} ({item.appointment_time})</div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs bg-cyan-500/10 text-cyan-400 px-3 py-1 rounded-full font-mono font-semibold">Queue #{item.queue_number}</span>
-                      <div className="text-[10px] text-slate-400 uppercase mt-1">{item.status}</div>
+                    <div className="text-right flex flex-col items-end gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs bg-cyan-500/10 text-cyan-400 px-3 py-1 rounded-full font-mono font-semibold">Queue #{item.queue_number}</span>
+                        <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded ${
+                          item.status === 'WAITING' ? 'bg-amber-500/10 text-amber-400' :
+                          item.status === 'IN_PROGRESS' ? 'bg-cyan-500/10 text-cyan-400' :
+                          item.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' :
+                          'bg-slate-800 text-slate-400'
+                        }`}>{item.status}</span>
+                      </div>
+                      {item.status === 'WAITING' && (
+                        <button
+                          onClick={() => handleCancelAppointment(item.id)}
+                          className="text-[11px] text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 px-2.5 py-1 rounded border border-rose-500/20 transition-all flex items-center gap-1"
+                        >
+                          <X className="w-3 h-3" /> Cancel Ticket
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'profile' && (
+          <div className="max-w-3xl mx-auto space-y-6">
+            <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
+              <div className="flex items-center gap-3 border-b border-slate-800 pb-4">
+                <div className="w-12 h-12 rounded-xl bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 font-bold text-lg">
+                  {currentUser.full_name?.charAt(0) || 'P'}
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-100">{currentUser.full_name}</h2>
+                  <p className="text-xs text-slate-400 font-mono">Patient Portal ID: PAT-{currentUser.id.toString().padStart(4, '0')}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <span className="text-slate-500 block">Registered Email</span>
+                  <span className="text-slate-200 font-medium">{currentUser.email}</span>
+                </div>
+                <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <span className="text-slate-500 block">Assigned Role</span>
+                  <span className="text-cyan-400 font-semibold uppercase">{currentUser.role}</span>
+                </div>
+                <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <span className="text-slate-500 block">Department / Care Focus</span>
+                  <span className="text-slate-200">{currentUser.department || 'General Patient Care'}</span>
+                </div>
+                <div className="bg-[#0b0f19] p-3.5 rounded-xl border border-slate-800 space-y-1">
+                  <span className="text-slate-500 block">Account Status</span>
+                  <span className="text-emerald-400 font-semibold flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Active & Verified</span>
+                </div>
+              </div>
+
+              {/* Academic registry disclosure note */}
+              <div className="p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-xl text-xs text-slate-400 space-y-1">
+                <div className="font-semibold text-cyan-400 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" /> Academic & Clinical Record Notice
+                </div>
+                <p>
+                  Institutional affiliations, university enrollment, stage, and section are synchronized with your verified campus health credentials in compliance with existing database architecture.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Summary of Records & Appointments */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-[#111827] p-5 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs font-bold text-slate-200">Active Clinic Tickets</h3>
+                  <button onClick={() => setActiveTab('booking')} className="text-[11px] text-cyan-400 hover:underline">Manage</button>
+                </div>
+                <div className="text-2xl font-bold text-cyan-400">{patientAppointments.length}</div>
+                <p className="text-[11px] text-slate-500">Upcoming clinical consults and queue tickets.</p>
+              </div>
+
+              <div className="bg-[#111827] p-5 rounded-2xl border border-slate-800 space-y-3">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs font-bold text-slate-200">EHR Diagnostic Records</h3>
+                  <button onClick={() => setActiveTab('records')} className="text-[11px] text-cyan-400 hover:underline">View All</button>
+                </div>
+                <div className="text-2xl font-bold text-emerald-400">{medicalRecords.length}</div>
+                <p className="text-[11px] text-slate-500">Saved AI diagnostics, evaluations, and print reports.</p>
               </div>
             </div>
           </div>
@@ -634,6 +840,29 @@ export default function App() {
                         {item.status}
                       </span>
 
+                      <button
+                        onClick={() => handleViewPatientEhr(item.patient_id, item.patient_name)}
+                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-cyan-600/30 hover:border-cyan-500 text-cyan-400 flex items-center gap-1 transition-all"
+                        title="Inspect Patient EHR"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> EHR
+                      </button>
+
+                      <button
+                        onClick={() => setDoctorClinicalModal({
+                          patient_id: item.patient_id,
+                          patient_name: item.patient_name,
+                          record_type: 'Physician Clinical Evaluation',
+                          risk_score: 15,
+                          status_level: 'NORMAL',
+                          notes: ''
+                        })}
+                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-emerald-600/30 hover:border-emerald-500 text-emerald-400 flex items-center gap-1 transition-all"
+                        title="Add Clinical Evaluation Note"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5" /> Note
+                      </button>
+
                       <button 
                         onClick={() => updateQueueStatus(item, 'IN_PROGRESS')} 
                         className="px-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-cyan-600 hover:border-cyan-500 text-slate-200 transition-all">
@@ -644,6 +873,13 @@ export default function App() {
                         className="px-3 py-1.5 text-xs rounded-lg border border-slate-700 bg-slate-800 hover:bg-emerald-600 hover:border-emerald-500 text-slate-200 transition-all">
                         Complete
                       </button>
+                      <button
+                        onClick={() => handleCancelAppointment(item.id)}
+                        className="p-1.5 text-xs rounded-lg border border-rose-500/20 bg-slate-800 hover:bg-rose-500/20 text-rose-400 transition-all"
+                        title="Cancel Appointment"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -652,22 +888,509 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'emergencies' && (
+          <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <div>
+                <h2 className="text-base font-semibold text-rose-400 flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5" /> Emergency Acute Triage Incident Feed
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">Real-time acute clinical alerts and telemetry incidents</p>
+              </div>
+              <button
+                onClick={() => setShowEmergencyModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition-all shadow-md"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" /> Dispatch Alert
+              </button>
+            </div>
+
+            {emergencyRecords.length === 0 ? (
+              <div className="text-center text-slate-500 py-12 text-xs">
+                No acute emergency incidents registered in current session.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {emergencyRecords.map(em => (
+                  <div key={em.id} className="bg-[#0b0f19] p-4 rounded-xl border border-rose-500/20 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-100 text-sm">{em.patient_name}</span>
+                          <span className="text-[10px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-400 font-mono font-bold">
+                            EHR #{em.id}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-400 mt-0.5">{em.diagnosis || 'Acute Distress'}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-slate-500">{em.created_at}</div>
+                        {currentUser.role !== 'patient' && em.patient_id && (
+                          <div className="flex items-center gap-2 mt-1">
+                            <button
+                              onClick={() => handleViewPatientEhr(em.patient_id, em.patient_name)}
+                              className="text-[11px] text-cyan-400 hover:underline flex items-center gap-1"
+                            >
+                              <Eye className="w-3 h-3" /> View EHR
+                            </button>
+                            <button
+                              onClick={() => setDoctorClinicalModal({
+                                patient_id: em.patient_id,
+                                patient_name: em.patient_name,
+                                record_type: 'Emergency Triage Follow-up',
+                                risk_score: 90,
+                                status_level: 'CRITICAL',
+                                notes: `Follow-up on Emergency EHR #${em.id}: ${em.triage_notes || em.diagnosis}`
+                              })}
+                              className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1"
+                            >
+                              <PlusCircle className="w-3 h-3" /> Record Evaluation
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2 text-[11px] bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                      <div><span className="text-slate-500 block">Heart Rate</span><span className="font-mono text-rose-400 font-bold">{em.heart_rate} bpm</span></div>
+                      <div><span className="text-slate-500 block">SpO2</span><span className="font-mono text-cyan-400 font-bold">{em.spo2}%</span></div>
+                      <div><span className="text-slate-500 block">Blood Pressure</span><span className="font-mono text-slate-200">{em.blood_pressure}</span></div>
+                      <div><span className="text-slate-500 block">Temp</span><span className="font-mono text-amber-400">{em.temperature}°C</span></div>
+                    </div>
+
+                    {em.triage_notes && (
+                      <div className="text-xs text-slate-300 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                        <span className="text-slate-500 block text-[10px] mb-0.5">Triage Clinical Notes:</span>
+                        {em.triage_notes}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {activeTab === 'admin' && (
-          <div className="max-w-xl mx-auto bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
-            <h2 className="text-base font-semibold text-cyan-400 flex items-center gap-2"><ShieldCheck className="w-5 h-5" /> Admin Staff Portal</h2>
-            {adminMsg && <div className="p-3 bg-cyan-500/10 text-cyan-400 text-xs rounded-xl">{adminMsg}</div>}
-            <form onSubmit={handleCreateDoctor} className="space-y-3">
-              <input type="text" placeholder="Doctor Full Name" required value={newDocForm.full_name} onChange={e => setNewDocForm({...newDocForm, full_name: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm" />
-              <input type="email" placeholder="Doctor Email" required value={newDocForm.email} onChange={e => setNewDocForm({...newDocForm, email: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm" />
-              <input type="password" placeholder="Password" required value={newDocForm.password} onChange={e => setNewDocForm({...newDocForm, password: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm" />
-              <select value={newDocForm.department} onChange={e => setNewDocForm({...newDocForm, department: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm">
-                {departments.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-              <button type="submit" className="w-full bg-cyan-600 font-semibold text-sm py-3 rounded-xl">Create Doctor Account</button>
-            </form>
+          <div className="space-y-6">
+            <div className="flex gap-2 border-b border-slate-800 pb-3">
+              <button
+                onClick={() => setAdminSubTab('doctors')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  adminSubTab === 'doctors' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Doctors Directory & Onboarding
+              </button>
+              <button
+                onClick={() => setAdminSubTab('users')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  adminSubTab === 'users' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                System Users Directory ({adminUsers.length})
+              </button>
+              <button
+                onClick={() => setAdminSubTab('appointments')}
+                className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  adminSubTab === 'appointments' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                All Clinic Appointments ({adminAppointments.length})
+              </button>
+            </div>
+
+            {adminSubTab === 'doctors' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="lg:col-span-5 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
+                  <h2 className="text-base font-semibold text-cyan-400 flex items-center gap-2"><ShieldCheck className="w-5 h-5" /> Onboard Clinical Doctor</h2>
+                  {adminMsg && <div className="p-3 bg-cyan-500/10 text-cyan-400 text-xs rounded-xl">{adminMsg}</div>}
+                  <form onSubmit={handleCreateDoctor} className="space-y-3">
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Doctor Full Name</label>
+                      <input type="text" placeholder="Dr. Jane Smith" required value={newDocForm.full_name} onChange={e => setNewDocForm({...newDocForm, full_name: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Official Email</label>
+                      <input type="email" placeholder="jane.smith@aurahealth.com" required value={newDocForm.email} onChange={e => setNewDocForm({...newDocForm, email: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Temporary Password</label>
+                      <input type="password" placeholder="••••••••" required value={newDocForm.password} onChange={e => setNewDocForm({...newDocForm, password: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm text-slate-200" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1">Clinical Department</label>
+                      <select value={newDocForm.department} onChange={e => setNewDocForm({...newDocForm, department: e.target.value})} className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-3 text-sm text-slate-200">
+                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                    <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 font-semibold text-sm py-3 rounded-xl transition-all">Create Doctor Account</button>
+                  </form>
+                </div>
+
+                <div className="lg:col-span-7 bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
+                  <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2"><Users className="w-5 h-5 text-cyan-400" /> Active Medical Staff ({doctorsList.length})</h2>
+                  <div className="space-y-3">
+                    {doctorsList.map(doc => (
+                      <div key={doc.id} className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 flex justify-between items-center">
+                        <div>
+                          <div className="text-sm font-bold text-slate-200">{doc.name}</div>
+                          <div className="text-xs text-cyan-400 mt-0.5">{doc.department}</div>
+                        </div>
+                        <span className="text-[10px] px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 font-mono">
+                          ID: DOC-{doc.id.toString().padStart(3, '0')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {adminSubTab === 'users' && (
+              <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
+                <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2"><User className="w-5 h-5 text-cyan-400" /> All Registered Accounts</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Name</th>
+                        <th className="py-3 px-3">Email</th>
+                        <th className="py-3 px-3">Role</th>
+                        <th className="py-3 px-3">Department</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-slate-300">
+                      {adminUsers.map(u => (
+                        <tr key={u.id} className="hover:bg-slate-800/40">
+                          <td className="py-3 px-3 font-mono text-cyan-400">#{u.id}</td>
+                          <td className="py-3 px-3 font-semibold text-slate-100">{u.full_name}</td>
+                          <td className="py-3 px-3 text-slate-400 font-mono">{u.email}</td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono ${
+                              u.role === 'admin' ? 'bg-purple-500/10 text-purple-400' :
+                              u.role === 'doctor' ? 'bg-cyan-500/10 text-cyan-400' : 'bg-emerald-500/10 text-emerald-400'
+                            }`}>
+                              {u.role}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-slate-400">{u.department || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {adminSubTab === 'appointments' && (
+              <div className="bg-[#111827] p-6 rounded-2xl border border-slate-800 space-y-4">
+                <h2 className="text-base font-semibold text-slate-200 flex items-center gap-2"><Calendar className="w-5 h-5 text-cyan-400" /> Hospital Appointments Registry</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-400 uppercase font-mono text-[10px]">
+                        <th className="py-3 px-3">ID</th>
+                        <th className="py-3 px-3">Patient</th>
+                        <th className="py-3 px-3">Doctor</th>
+                        <th className="py-3 px-3">Dept</th>
+                        <th className="py-3 px-3">Date / Time</th>
+                        <th className="py-3 px-3">Queue</th>
+                        <th className="py-3 px-3">Status</th>
+                        <th className="py-3 px-3">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800 text-slate-300">
+                      {adminAppointments.map(a => (
+                        <tr key={a.id} className="hover:bg-slate-800/40">
+                          <td className="py-3 px-3 font-mono text-cyan-400">#{a.id}</td>
+                          <td className="py-3 px-3 font-semibold text-slate-100">{a.patient_name}</td>
+                          <td className="py-3 px-3 text-slate-300">{a.doctor_name}</td>
+                          <td className="py-3 px-3 text-slate-400">{a.department}</td>
+                          <td className="py-3 px-3 font-mono text-slate-400">{a.appointment_date} {a.appointment_time}</td>
+                          <td className="py-3 px-3 font-mono text-cyan-400">#{a.queue_number}</td>
+                          <td className="py-3 px-3">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono ${
+                              a.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400' :
+                              a.status === 'IN_PROGRESS' ? 'bg-amber-500/10 text-amber-400' :
+                              a.status === 'CANCELLED' ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-800 text-slate-400'
+                            }`}>
+                              {a.status}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            {a.status === 'WAITING' && (
+                              <button
+                                onClick={() => handleCancelAppointment(a.id)}
+                                className="text-[10px] text-rose-400 hover:underline"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
+
+      {/* 1. Emergency SOS Dispatch Modal */}
+      {showEmergencyModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-rose-500/30 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="text-base font-bold text-rose-400 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" /> Emergency Acute Triage SOS
+              </h3>
+              <button onClick={() => setShowEmergencyModal(false)} className="text-slate-400 hover:text-slate-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-slate-400">
+              Dispatch an acute emergency alert to the critical care and telemetry staff immediately.
+            </p>
+            <form onSubmit={handleSubmitEmergency} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 block mb-1">Heart Rate (bpm)</label>
+                  <input
+                    type="number"
+                    value={emergencyForm.heart_rate}
+                    onChange={e => setEmergencyForm({...emergencyForm, heart_rate: e.target.value})}
+                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 block mb-1">SpO2 (%)</label>
+                  <input
+                    type="number"
+                    value={emergencyForm.spo2}
+                    onChange={e => setEmergencyForm({...emergencyForm, spo2: e.target.value})}
+                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 block mb-1">Blood Pressure</label>
+                  <input
+                    type="text"
+                    value={emergencyForm.blood_pressure}
+                    onChange={e => setEmergencyForm({...emergencyForm, blood_pressure: e.target.value})}
+                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-slate-400 block mb-1">Temperature (°C)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={emergencyForm.temperature}
+                    onChange={e => setEmergencyForm({...emergencyForm, temperature: e.target.value})}
+                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-slate-400 block mb-1">Suspected Diagnosis / Acute Symptoms</label>
+                <input
+                  type="text"
+                  value={emergencyForm.diagnosis}
+                  onChange={e => setEmergencyForm({...emergencyForm, diagnosis: e.target.value})}
+                  className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-slate-400 block mb-1">Clinical Triage Notes</label>
+                <textarea
+                  rows="2"
+                  value={emergencyForm.triage_notes}
+                  onChange={e => setEmergencyForm({...emergencyForm, triage_notes: e.target.value})}
+                  placeholder="Patient presenting acute chest pain, shortness of breath, diaphoresis..."
+                  className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                ></textarea>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmergencyModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={emergencySubmitting}
+                  className="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold transition-all flex items-center gap-1.5 shadow-lg"
+                >
+                  <AlertTriangle className="w-4 h-4" /> {emergencySubmitting ? 'Dispatching...' : 'Dispatch Alert'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Patient Comprehensive EHR Modal */}
+      {selectedPatientEhr && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-slate-800 rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-cyan-400" /> Patient Medical Record (EHR)
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Patient: <span className="text-cyan-400 font-semibold">{selectedPatientEhr.patientName}</span> (ID #{selectedPatientEhr.patientId})
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {currentUser.role === 'doctor' && (
+                  <button
+                    onClick={() => {
+                      setDoctorClinicalModal({
+                        patient_id: selectedPatientEhr.patientId,
+                        patient_name: selectedPatientEhr.patientName,
+                        record_type: 'Physician Clinical Evaluation',
+                        risk_score: 15,
+                        status_level: 'NORMAL',
+                        notes: ''
+                      });
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center gap-1"
+                  >
+                    <PlusCircle className="w-3.5 h-3.5" /> Add Note
+                  </button>
+                )}
+                <button onClick={() => setSelectedPatientEhr(null)} className="text-slate-400 hover:text-slate-200">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {selectedPatientEhr.records.length === 0 ? (
+                <div className="text-center text-slate-500 py-10 text-xs">No medical records saved for this patient yet.</div>
+              ) : (
+                selectedPatientEhr.records.map(rec => (
+                  <div key={rec.id} className="bg-[#0b0f19] p-4 rounded-xl border border-slate-800 space-y-2 text-xs">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-bold text-cyan-400">{rec.record_type}</span>
+                        <div className="text-[10px] text-slate-500">{rec.created_at}</div>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        rec.status_level === 'CRITICAL' || rec.status_level === 'HIGH' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'
+                      }`}>
+                        {rec.status_level} ({rec.risk_score}%)
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {rec.details.map((d, idx) => (
+                        <div key={idx} className="text-slate-300 bg-slate-900/60 p-2 rounded-lg border border-slate-800/60">{d}</div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Doctor Clinical Note Entry Modal */}
+      {doctorClinicalModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111827] border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                  <Stethoscope className="w-5 h-5 text-emerald-400" /> Record Clinical Evaluation
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Patient: <span className="text-emerald-400 font-semibold">{doctorClinicalModal.patient_name}</span>
+                </p>
+              </div>
+              <button onClick={() => setDoctorClinicalModal(null)} className="text-slate-400 hover:text-slate-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleDoctorSaveRecord} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-400 block mb-1">Evaluation / Record Type</label>
+                <input
+                  type="text"
+                  value={doctorClinicalModal.record_type}
+                  onChange={e => setDoctorClinicalModal({...doctorClinicalModal, record_type: e.target.value})}
+                  className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-400 block mb-1">Status Severity</label>
+                  <select
+                    value={doctorClinicalModal.status_level}
+                    onChange={e => setDoctorClinicalModal({...doctorClinicalModal, status_level: e.target.value})}
+                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                  >
+                    <option value="NORMAL">NORMAL</option>
+                    <option value="MODERATE">MODERATE</option>
+                    <option value="HIGH">HIGH</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-400 block mb-1">Assessed Risk Score (0-100)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={doctorClinicalModal.risk_score}
+                    onChange={e => setDoctorClinicalModal({...doctorClinicalModal, risk_score: e.target.value})}
+                    className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-slate-400 block mb-1">Physician Clinical Notes & Recommendations</label>
+                <textarea
+                  rows="3"
+                  value={doctorClinicalModal.notes}
+                  onChange={e => setDoctorClinicalModal({...doctorClinicalModal, notes: e.target.value})}
+                  placeholder="Record symptoms, diagnostic notes, treatment plan, and prescription..."
+                  className="w-full bg-[#0b0f19] border border-slate-800 rounded-xl p-2.5 text-slate-200"
+                  required
+                ></textarea>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setDoctorClinicalModal(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-all shadow-lg"
+                >
+                  Save to EHR
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

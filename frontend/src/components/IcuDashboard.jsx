@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { HeartPulse } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 export default function IcuDashboard({ currentUser }) {
   // تفريغ اسم المريض عند دخول الطبيب وتعبئته تلقائياً فقط إذا كان المستخدم مريضاً
   const [formData, setFormData] = useState({
@@ -22,13 +24,13 @@ export default function IcuDashboard({ currentUser }) {
     if (!formData.patient_name.trim()) return alert('Please enter patient name');
     setLoading(true);
     try {
-      const res = await axios.post('http://127.0.0.1:8000/api/icu/analyze', {
+      const res = await axios.post(`${API_BASE_URL}/api/icu/analyze`, {
         ...formData,
         db_patient_id: currentUser?.role === 'patient' ? currentUser?.id : null
       });
       setResult(res.data.assessment);
     } catch (err) {
-      alert('Analysis error');
+      alert(err.response?.data?.detail || 'ICU risk analysis failed.');
     } finally {
       setLoading(false);
     }

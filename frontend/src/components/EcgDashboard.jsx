@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import { Heart, Activity, Upload, CheckCircle2, FileText, RefreshCw, Sliders, Image as ImageIcon, User, AlertCircle } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
+
 export default function EcgDashboard({ currentUser }) {
   // Mode switcher: 'values' or 'image'
   const [analysisMode, setAnalysisMode] = useState('values');
@@ -118,7 +120,7 @@ export default function EcgDashboard({ currentUser }) {
         const formData = new FormData();
         formData.append("file", imageFile);
 
-        const response = await axios.post("http://127.0.0.1:8000/ecg/predict-image", formData, {
+        const response = await axios.post(`${API_BASE_URL}/ecg/predict-image`, formData, {
           headers: { "Content-Type": "multipart/form-data" }
         });
 
@@ -160,14 +162,14 @@ export default function EcgDashboard({ currentUser }) {
       }
     } catch (err) {
       console.error("AI Evaluation failed", err);
-      alert("Failed to connect to ECG Vision AI backend server. Make sure FastAPI server is running.");
+      alert(err.response?.data?.detail || "Failed to connect to ECG Vision AI backend server. Make sure FastAPI server is running.");
       setLoading(false);
     }
   };
 
   const handleSaveToEHR = async () => {
     try {
-      await axios.post('http://127.0.0.1:8000/api/medical-records/save', {
+      await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
         patient_name: clinicalParams.patientName || 'Anonymous Patient',
         patient_id: currentUser?.id,
         record_type: `ECG Diagnostic (${analysisMode === 'values' ? 'Detailed Values' : 'Waveform Image Vision'})`,
@@ -177,7 +179,7 @@ export default function EcgDashboard({ currentUser }) {
       });
       alert(`Report for ${clinicalParams.patientName || 'Patient'} saved to EHR system!`);
     } catch (err) {
-      alert('Report saved to session record.');
+      alert(err.response?.data?.detail || 'Failed to save report to EHR system.');
     }
   };
 
