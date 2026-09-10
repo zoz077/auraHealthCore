@@ -1,0 +1,27 @@
+﻿# Virtual Environments
+.venv/
+venv/
+ENV/
+
+# Node Modules & Build
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*.class
+
+# Large Model weights
+*.pth
+*.pt
+*.pkl
+*.joblib
+*.npz
+
+# Temp uploads & logs
+temp_uploads/
+backend/temp_uploads/
+*.log
