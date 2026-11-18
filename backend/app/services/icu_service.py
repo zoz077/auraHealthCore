@@ -11,11 +11,11 @@ SCALER_PATH = os.path.join(MODEL_DIR, "icu_xgb_scaler.pkl")
 try:
     model = joblib.load(MODEL_PATH)
     scaler = joblib.load(SCALER_PATH)
-    print("✅ ICU XGBoost Model & Scaler loaded successfully!")
+    print("[OK] ICU XGBoost Model & Scaler loaded successfully!")
 except Exception as e:
     model = None
     scaler = None
-    print(f"⚠️ Warning: ICU Model files not loaded correctly: {e}")
+    print(f"[WARNING] ICU Model files not loaded correctly: {e}")
 
 
 def predict_icu_risk(age: float, ef: float, bp: int, creatinine: float, sodium: float):

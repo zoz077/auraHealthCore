@@ -22,13 +22,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.database import engine, Base, get_db
+from app.database import engine, Base, get_db, sync_db_schema
 from app.models.db_models import (
     UserDB,
     AppointmentDB,
     MedicalRecordDB,
     EmergencyEHR,
     NotificationDB,
+    AuditLogDB,
 )
 from app.services.icu_service import predict_icu_risk
 
@@ -39,9 +40,13 @@ from app.routers import (
     ecg_router,
     respiratory_router,
     neurology_router,
+    orthopedics_router,
+    general_medicine_router,
 )
 
-# إنشاء الجداول تلقائياً
+
+# مزامنة قاعدة البيانات وإنشاء الجداول تلقائياً
+sync_db_schema()
 Base.metadata.create_all(bind=engine)
 
 # إعدادات الأمان والجلسات
@@ -133,7 +138,12 @@ def clear_session_cookie(response: Response):
 def get_current_user(
     request: Request, db: Session = Depends(get_db)
 ) -> UserDB:
-    token = request.cookies.get(AURA_COOKIE_NAME)
+    auth_header = request.headers.get("Authorization")
+    token = None
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1]
+    if not token:
+        token = request.cookies.get(AURA_COOKIE_NAME)
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -215,6 +225,9 @@ app.include_router(ultrasound_router.router, dependencies=ai_auth_dep)
 app.include_router(ecg_router.router, dependencies=ai_auth_dep)
 app.include_router(respiratory_router.router, dependencies=ai_auth_dep)
 app.include_router(neurology_router.router, dependencies=ai_auth_dep)
+app.include_router(orthopedics_router.router, dependencies=ai_auth_dep)
+app.include_router(general_medicine_router.router)
+
 
 # --- إدارة الاتصالات المباشرة الآمنة والموجهة (Targeted WebSockets) ---
 class ConnectionManager:
@@ -259,7 +272,19 @@ SLOT_DURATION_MINUTES = 20
 TIME_FORMAT = "%I:%M %p"
 
 def _parse_time(t: str) -> datetime:
-    return datetime.strptime(t.strip().upper(), TIME_FORMAT)
+    clean = t.strip().upper()
+    if len(clean.split(":")[0]) == 1:
+        clean = "0" + clean
+    return datetime.strptime(clean, TIME_FORMAT)
+
+def parse_appointment_datetime(date_str: str, time_str: str) -> Optional[datetime]:
+    try:
+        clean_time = time_str.strip().upper()
+        if len(clean_time.split(":")[0]) == 1:
+            clean_time = "0" + clean_time
+        return datetime.strptime(f"{date_str.strip()} {clean_time}", f"%Y-%m-%d {TIME_FORMAT}")
+    except Exception:
+        return None
 
 def generate_daily_slots() -> List[str]:
     start = _parse_time(CLINIC_START_TIME)
@@ -271,13 +296,37 @@ def generate_daily_slots() -> List[str]:
         cur += timedelta(minutes=SLOT_DURATION_MINUTES)
     return slots
 
+def sync_appointment_lifecycle(db: Session):
+    """
+    Automatically marks past appointments as Missed if they were not Completed or Cancelled.
+    """
+    now = datetime.now()
+    active_appts = (
+        db.query(AppointmentDB)
+        .filter(AppointmentDB.status.in_(["Upcoming", "WAITING", "In Progress"]))
+        .all()
+    )
+    changed = False
+    for a in active_appts:
+        dt = parse_appointment_datetime(a.appointment_date, a.appointment_time)
+        if dt:
+            end_time = dt + timedelta(minutes=SLOT_DURATION_MINUTES)
+            if end_time < now:
+                a.status = "Missed"
+                changed = True
+        elif a.status == "WAITING":
+            a.status = "Upcoming"
+            changed = True
+    if changed:
+        db.commit()
+
 def recompute_queue_numbers(db: Session, doctor_id: int, appointment_date: str):
     appts = (
         db.query(AppointmentDB)
         .filter(
             AppointmentDB.doctor_id == doctor_id,
             AppointmentDB.appointment_date == appointment_date,
-            AppointmentDB.status != "CANCELLED",
+            AppointmentDB.status.in_(["Upcoming", "WAITING", "In Progress"]),
         )
         .all()
     )
@@ -340,6 +389,28 @@ class LoginInput(BaseModel):
     email: str
     password: str
 
+class GoogleAuthInput(BaseModel):
+    credential: Optional[str] = None
+    google_id: Optional[str] = None
+    email: Optional[str] = None
+    name: Optional[str] = None
+
+class CompleteProfileInput(BaseModel):
+    phone_number: str
+    date_of_birth: str
+    gender: str
+    blood_group: str
+    emergency_contact: Optional[str] = None
+
+class LinkGoogleInput(BaseModel):
+    credential: Optional[str] = None
+    google_id: Optional[str] = None
+    email: Optional[str] = None
+
+class UpdateEmailInput(BaseModel):
+    new_email: str
+    password: Optional[str] = None
+
 class CreateDoctorInput(BaseModel):
     full_name: str
     email: str
@@ -382,25 +453,56 @@ class EmergencyReportInput(BaseModel):
 class SaveRecordInput(BaseModel):
     patient_id: Optional[int] = None
     record_type: str
-    risk_score: float
+    risk_score: float = 0.0
     status_level: str
-    details: List[str]
+    details: List[str] = []
+    department: Optional[str] = None
+    modality: Optional[str] = None
+    source_category: Optional[str] = "AI Analysis"
+    model_name: Optional[str] = None
+    confidence: Optional[float] = None
+    image_ref: Optional[str] = None
+
+def serialize_user(user: UserDB) -> dict:
+    return {
+        "id": user.id,
+        "full_name": user.full_name,
+        "email": user.email,
+        "role": user.role,
+        "department": getattr(user, "department", None),
+        "google_id": user.google_id,
+        "is_email_verified": bool(user.is_email_verified),
+        "profile_completed": bool(user.profile_completed),
+        "phone_number": user.phone_number,
+        "date_of_birth": user.date_of_birth,
+        "gender": user.gender,
+        "blood_group": user.blood_group,
+        "emergency_contact": user.emergency_contact,
+    }
+
+def decode_google_credential(credential: str) -> dict:
+    try:
+        return jwt.decode(credential, options={"verify_signature": False})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid Google credential: {str(e)}")
 
 # --- Endpoints للنظام الأساسي والمصادقة ---
 
 @app.post("/api/auth/register")
 def register(data: RegisterInput, db: Session = Depends(get_db)):
-    existing = db.query(UserDB).filter(UserDB.email == data.email).first()
+    clean_email = data.email.strip().lower()
+    existing = db.query(UserDB).filter(UserDB.email == clean_email).first()
     if existing:
         raise HTTPException(
             status_code=400, detail="Email already registered"
         )
 
     user = UserDB(
-        full_name=data.full_name,
-        email=data.email,
+        full_name=data.full_name.strip(),
+        email=clean_email,
         hashed_password=hash_password(data.password),
         role="patient",
+        profile_completed=True,
     )
     db.add(user)
     db.commit()
@@ -412,7 +514,8 @@ def login(
     response: Response,
     db: Session = Depends(get_db),
 ):
-    user = db.query(UserDB).filter(UserDB.email == data.email).first()
+    clean_email = data.email.strip().lower()
+    user = db.query(UserDB).filter(UserDB.email == clean_email).first()
     if not user or not verify_and_migrate_password(data.password, user, db):
         raise HTTPException(
             status_code=401, detail="Invalid email or password"
@@ -422,24 +525,157 @@ def login(
     set_session_cookie(response, token)
 
     return {
-        "user": {
-            "id": user.id,
-            "full_name": user.full_name,
-            "email": user.email,
-            "role": user.role,
-            "department": getattr(user, "department", None),
-        }
+        "user": serialize_user(user)
     }
+
+@app.post("/api/auth/google")
+def google_auth(
+    data: GoogleAuthInput,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    google_id = data.google_id
+    email = data.email
+    name = data.name
+
+    if data.credential:
+        payload = decode_google_credential(data.credential)
+        google_id = str(payload.get("sub", "")) or google_id
+        email = payload.get("email") or email
+        name = payload.get("name") or name
+
+    if not email:
+        raise HTTPException(status_code=400, detail="Google authentication failed: email missing.")
+
+    email = email.strip().lower()
+    user = None
+    if google_id:
+        user = db.query(UserDB).filter(UserDB.google_id == str(google_id)).first()
+
+    is_new_user = False
+    if not user:
+        user = db.query(UserDB).filter(UserDB.email == email).first()
+        if user:
+            if google_id:
+                user.google_id = str(google_id)
+            user.is_email_verified = True
+            db.commit()
+        else:
+            is_new_user = True
+            user = UserDB(
+                full_name=name.strip() if name else email.split("@")[0].capitalize(),
+                email=email,
+                role="patient",
+                google_id=str(google_id) if google_id else None,
+                is_email_verified=True,
+                profile_completed=False,
+                hashed_password="!google_oauth_" + secrets.token_hex(16),
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+    token = create_access_token(user.id, user.role, user.email)
+    set_session_cookie(response, token)
+
+    requires_completion = not bool(user.profile_completed) and user.role == "patient"
+
+    return {
+        "user": serialize_user(user),
+        "requires_profile_completion": requires_completion,
+        "is_new_user": is_new_user,
+        "access_token": token,
+    }
+
+@app.post("/api/auth/complete-profile")
+def complete_profile(
+    data: CompleteProfileInput,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.phone_number = data.phone_number.strip()
+    current_user.date_of_birth = data.date_of_birth.strip()
+    current_user.gender = data.gender.strip()
+    current_user.blood_group = data.blood_group.strip()
+    if data.emergency_contact:
+        current_user.emergency_contact = data.emergency_contact.strip()
+    current_user.profile_completed = True
+    db.commit()
+    db.refresh(current_user)
+
+    return {
+        "message": "Profile completed successfully",
+        "user": serialize_user(current_user),
+    }
+
+@app.post("/api/auth/profile/link-google")
+def link_google(
+    data: LinkGoogleInput,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    google_id = data.google_id
+    if data.credential:
+        payload = decode_google_credential(data.credential)
+        google_id = str(payload.get("sub", "")) or google_id
+
+    if not google_id:
+        raise HTTPException(status_code=400, detail="Missing Google ID")
+
+    existing = db.query(UserDB).filter(UserDB.google_id == str(google_id), UserDB.id != current_user.id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="This Google account is already linked to another user.")
+
+    current_user.google_id = str(google_id)
+    current_user.is_email_verified = True
+    db.commit()
+    return {"message": "Google account linked successfully", "user": serialize_user(current_user)}
+
+@app.put("/api/auth/profile/email")
+def update_profile_email(
+    data: UpdateEmailInput,
+    response: Response,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    new_email = data.new_email.strip().lower()
+    if not new_email or "@" not in new_email:
+        raise HTTPException(status_code=400, detail="Invalid email format")
+
+    if new_email == current_user.email.lower():
+        return {"message": "Email is already set to this address", "user": serialize_user(current_user)}
+
+    # Verify password if user has password set (local auth accounts)
+    if current_user.hashed_password and not current_user.hashed_password.startswith("!google_oauth_"):
+        if not data.password or not verify_and_migrate_password(data.password, current_user, db):
+            raise HTTPException(status_code=401, detail="Invalid current password. Password verification required to change email.")
+
+    # Check collision
+    existing = db.query(UserDB).filter(UserDB.email == new_email, UserDB.id != current_user.id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Email is already taken by another user.")
+
+    current_user.email = new_email
+    current_user.is_email_verified = False
+    db.commit()
+
+    token = create_access_token(current_user.id, current_user.role, current_user.email)
+    set_session_cookie(response, token)
+
+    return {"message": "Email updated successfully. Please verify your new email.", "user": serialize_user(current_user)}
+
+@app.post("/api/auth/profile/verify-email")
+def verify_profile_email(
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.is_email_verified = True
+    db.commit()
+    return {"message": "Email verified successfully", "user": serialize_user(current_user)}
 
 @app.get("/api/auth/me")
 def get_me(current_user: UserDB = Depends(get_current_user)):
-    user_data = {
-        "id": current_user.id,
-        "full_name": current_user.full_name,
-        "email": current_user.email,
-        "role": current_user.role,
-        "department": getattr(current_user, "department", None),
-    }
+    user_data = serialize_user(current_user)
     return {
         **user_data,
         "user": user_data,
@@ -533,6 +769,47 @@ def get_doctors(
         for d in doctors
     ]
 
+@app.get("/api/doctor/patients")
+def get_doctor_patients(
+    current_user: UserDB = Depends(require_roles("doctor", "admin")),
+    db: Session = Depends(get_db),
+):
+    if current_user.role == "admin":
+        patients = db.query(UserDB).filter(UserDB.role == "patient").all()
+    else:
+        appt_p_ids = [
+            a[0]
+            for a in db.query(AppointmentDB.patient_id)
+            .filter(AppointmentDB.doctor_id == current_user.id)
+            .distinct()
+            .all()
+        ]
+        rec_p_ids = [
+            r[0]
+            for r in db.query(MedicalRecordDB.patient_id)
+            .filter(MedicalRecordDB.doctor_id == current_user.id)
+            .distinct()
+            .all()
+        ]
+        p_ids = set(appt_p_ids + rec_p_ids)
+        if not p_ids:
+            patients = db.query(UserDB).filter(UserDB.role == "patient").limit(25).all()
+        else:
+            patients = db.query(UserDB).filter(UserDB.id.in_(p_ids)).all()
+
+    return [
+        {
+            "id": p.id,
+            "full_name": p.full_name,
+            "email": p.email,
+            "phone_number": p.phone_number,
+            "gender": p.gender,
+            "blood_group": p.blood_group,
+            "date_of_birth": p.date_of_birth,
+        }
+        for p in patients
+    ]
+
 @app.get("/api/appointments/available-slots")
 def get_available_slots(
     doctor_id: int,
@@ -540,22 +817,37 @@ def get_available_slots(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    sync_appointment_lifecycle(db)
     all_slots = generate_daily_slots()
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+
     booked = (
         db.query(AppointmentDB.appointment_time)
         .filter(
             AppointmentDB.doctor_id == doctor_id,
             AppointmentDB.appointment_date == date,
-            AppointmentDB.status != "CANCELLED",
+            AppointmentDB.status.notin_(["CANCELLED", "Cancelled", "Missed"]),
         )
         .all()
     )
-    booked_times = {b[0] for b in booked}
+    booked_times = {b[0].strip().upper() for b in booked}
 
-    return [
-        {"time": slot, "available": slot not in booked_times}
-        for slot in all_slots
-    ]
+    result = []
+    for slot in all_slots:
+        is_available = slot.strip().upper() not in booked_times
+
+        # Disallow past dates
+        if date < today_str:
+            is_available = False
+        elif date == today_str:
+            slot_dt = parse_appointment_datetime(date, slot)
+            if slot_dt and slot_dt <= now:
+                is_available = False
+
+        result.append({"time": slot, "available": is_available})
+
+    return result
 
 @app.post("/api/appointments/book")
 async def book_appointment(
@@ -563,9 +855,23 @@ async def book_appointment(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    sync_appointment_lifecycle(db)
     valid_slots = generate_daily_slots()
-    if data.appointment_time not in valid_slots:
+    valid_normalized = {s.strip().upper() for s in valid_slots}
+    if data.appointment_time.strip().upper() not in valid_normalized:
         raise HTTPException(status_code=400, detail="Invalid time slot.")
+
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    if data.appointment_date < today_str:
+        raise HTTPException(status_code=400, detail="Cannot book an appointment in the past.")
+
+    appt_dt = parse_appointment_datetime(data.appointment_date, data.appointment_time)
+    if not appt_dt:
+        raise HTTPException(status_code=400, detail="Invalid appointment date or time format.")
+
+    if appt_dt < now:
+        raise HTTPException(status_code=400, detail="Cannot book an appointment for a time that has already passed.")
 
     already_taken = (
         db.query(AppointmentDB)
@@ -573,7 +879,7 @@ async def book_appointment(
             AppointmentDB.doctor_id == data.doctor_id,
             AppointmentDB.appointment_date == data.appointment_date,
             AppointmentDB.appointment_time == data.appointment_time,
-            AppointmentDB.status != "CANCELLED",
+            AppointmentDB.status.notin_(["CANCELLED", "Cancelled"]),
         )
         .first()
     )
@@ -597,7 +903,7 @@ async def book_appointment(
         appointment_date=data.appointment_date,
         appointment_time=data.appointment_time,
         queue_number=1,
-        status="WAITING",
+        status="Upcoming",
     )
     db.add(appointment)
     db.commit()
@@ -610,13 +916,13 @@ async def book_appointment(
     notif_doc = NotificationDB(
         target_user_id=data.doctor_id,
         title="New Patient Appointment",
-        message=f"Patient {effective_patient_name} reserved Queue #{appointment.queue_number} for {data.appointment_time}",
+        message=f"Patient {effective_patient_name} reserved Queue #{appointment.queue_number} for {data.appointment_date} at {data.appointment_time}",
         priority="NORMAL",
     )
     notif_pat = NotificationDB(
         target_user_id=effective_patient_id,
         title="Appointment Confirmed",
-        message=f"Your appointment with Dr. {data.doctor_name} is confirmed. Queue #{appointment.queue_number}",
+        message=f"Your appointment with Dr. {data.doctor_name} is confirmed for {data.appointment_date} at {data.appointment_time}. Queue #{appointment.queue_number}",
         priority="NORMAL",
     )
     db.add(notif_doc)
@@ -649,6 +955,7 @@ async def book_appointment(
         "message": "Booked successfully",
         "appointment_id": appointment.id,
         "queue_number": appointment.queue_number,
+        "status": appointment.status,
     }
 
 @app.get("/api/appointments/patient/{patient_id}")
@@ -657,6 +964,7 @@ def get_patient_appointments(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    sync_appointment_lifecycle(db)
     # لا يمكن للمريض الاطلاع إلا على مواعيده الخاصة
     if current_user.role == "patient" and current_user.id != patient_id:
         raise HTTPException(
@@ -677,6 +985,7 @@ def get_doctor_queue(
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    sync_appointment_lifecycle(db)
     # لا يمكن للطبيب الاطلاع إلا على عيادته، والمريض ممنوع تماماً
     if current_user.role == "patient":
         raise HTTPException(
@@ -714,14 +1023,30 @@ async def update_appointment_status(
             detail="Access forbidden: cannot modify another doctor's appointments",
         )
 
-    app_item.status = data.status
+    canonical_map = {
+        "upcoming": "Upcoming",
+        "waiting": "Upcoming",
+        "in progress": "In Progress",
+        "in_progress": "In Progress",
+        "completed": "Completed",
+        "missed": "Missed",
+        "cancelled": "Cancelled",
+        "canceled": "Cancelled",
+    }
+    normalized_status = canonical_map.get(data.status.strip().lower(), data.status)
+    if normalized_status not in ["Upcoming", "In Progress", "Completed", "Missed", "Cancelled"]:
+        raise HTTPException(status_code=400, detail=f"Invalid status '{data.status}'")
+
+    app_item.status = normalized_status
     db.commit()
+
+    recompute_queue_numbers(db, app_item.doctor_id, app_item.appointment_date)
 
     # إشعار موجه للمريض بتحديث حالة دوره
     notif = NotificationDB(
         target_user_id=app_item.patient_id,
-        title="Ticket Status Update",
-        message=f"Your ticket with Dr. {app_item.doctor_name} has been updated to: {data.status}",
+        title="Appointment Status Update",
+        message=f"Your appointment with Dr. {app_item.doctor_name} has been updated to: {normalized_status}",
         priority="NORMAL",
     )
     db.add(notif)
@@ -738,7 +1063,7 @@ async def update_appointment_status(
         },
     )
 
-    return {"message": "Status updated"}
+    return {"message": "Status updated", "status": normalized_status}
 
 @app.put("/api/appointments/{app_id}/cancel")
 async def cancel_appointment(
@@ -756,7 +1081,7 @@ async def cancel_appointment(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Access forbidden: cannot cancel another patient's appointment",
             )
-        if app_item.status != "WAITING":
+        if app_item.status not in ["Upcoming", "WAITING"]:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Cannot cancel appointment with status '{app_item.status}'",
@@ -768,13 +1093,11 @@ async def cancel_appointment(
                 detail="Access forbidden: cannot cancel another doctor's appointment",
             )
 
-    app_item.status = "CANCELLED"
+    app_item.status = "Cancelled"
     db.commit()
 
-    # إعادة ترتيب أرقام قائمة الانتظار للمواعيد المتبقية
     recompute_queue_numbers(db, app_item.doctor_id, app_item.appointment_date)
 
-    # إشعار لكل من الطبيب والمريض
     notif_doc = NotificationDB(
         target_user_id=app_item.doctor_id,
         title="Appointment Cancelled",
@@ -791,7 +1114,6 @@ async def cancel_appointment(
     db.add(notif_pat)
     db.commit()
 
-    # إرسال تنبيه مباشر عبر WebSocket
     await manager.send_personal(
         app_item.doctor_id,
         {
@@ -829,22 +1151,61 @@ async def analyze_icu_patient(
         data.serum_sodium,
     )
 
-    # التحقق من هوية المريض لضمان تسجيل السجل للمريض الصحيح
     if current_user.role == "patient":
         target_patient_id = current_user.id
+        doctor_id = None
     else:
-        target_patient_id = data.db_patient_id
+        target_patient_id = data.db_patient_id or current_user.id
+        doctor_id = current_user.id if current_user.role == "doctor" else None
 
     if target_patient_id:
         record = MedicalRecordDB(
             patient_id=target_patient_id,
+            doctor_id=doctor_id,
+            department="ICU & Critical Care",
+            modality="Clinical Vitals",
+            source_category="AI Analysis",
+            model_name="ICU XGBoost Decompensation Analyzer",
+            confidence=float(assessment_result["risk_score"]),
             record_type="ICU Assessment",
             risk_score=assessment_result["risk_score"],
             status_level=assessment_result["status_level"],
             details_json=json.dumps(assessment_result["details"]),
         )
         db.add(record)
+
+        audit = AuditLogDB(
+            user_id=current_user.id,
+            patient_id=target_patient_id,
+            action="AI_ANALYSIS_SAVED",
+            department="ICU & Critical Care",
+            modality="Clinical Vitals",
+            model_name="ICU XGBoost Decompensation Analyzer",
+            result_summary=f"ICU Assessment: {assessment_result['status_level']} (Score: {assessment_result['risk_score']})",
+        )
+        db.add(audit)
         db.commit()
+
+        if current_user.role == "doctor" and target_patient_id != current_user.id:
+            notif = NotificationDB(
+                target_user_id=target_patient_id,
+                title="New ICU Risk Assessment",
+                message=f"Dr. {current_user.full_name} recorded an ICU Risk Assessment: {assessment_result['status_level']}",
+                priority="HIGH" if assessment_result["status_level"] == "CRITICAL" else "NORMAL",
+            )
+            db.add(notif)
+            db.commit()
+
+            await manager.send_personal(
+                target_patient_id,
+                {
+                    "id": notif.id,
+                    "title": notif.title,
+                    "message": notif.message,
+                    "priority": notif.priority,
+                    "created_at": notif.created_at.strftime("%Y-%m-%d %H:%M"),
+                },
+            )
 
     return {
         "patient_info": {
@@ -853,34 +1214,86 @@ async def analyze_icu_patient(
             "age": data.age,
         },
         "assessment": assessment_result,
+        "record_id": record.id if target_patient_id and record else None,
     }
 
 @app.post("/api/medical-records/save")
-def save_medical_record(
+async def save_medical_record(
     data: SaveRecordInput,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # إن كان مريضاً، يتم فرض معرفه الخاص لمنع التزوير
-    if current_user.role == "patient":
+    doctor_id = current_user.id if current_user.role == "doctor" else None
+
+    if current_user.role == "doctor":
+        if not data.patient_id:
+            raise HTTPException(status_code=400, detail="Patient ID is required when saving AI clinical evaluation.")
+        target_patient = db.query(UserDB).filter(UserDB.id == data.patient_id).first()
+        if not target_patient:
+            raise HTTPException(status_code=404, detail="Selected patient not found.")
+        target_patient_id = data.patient_id
+    elif current_user.role == "patient":
         target_patient_id = current_user.id
     else:
         target_patient_id = data.patient_id or current_user.id
 
     record = MedicalRecordDB(
         patient_id=target_patient_id,
+        doctor_id=doctor_id,
+        department=data.department,
+        modality=data.modality,
+        source_category=data.source_category or "AI Analysis",
+        model_name=data.model_name,
+        confidence=data.confidence,
+        image_ref=data.image_ref,
         record_type=data.record_type,
         risk_score=data.risk_score,
         status_level=data.status_level,
         details_json=json.dumps(data.details),
     )
     db.add(record)
+
+    audit = AuditLogDB(
+        user_id=current_user.id,
+        patient_id=target_patient_id,
+        action="AI_ANALYSIS_SAVED" if (data.source_category == "AI Analysis" or data.model_name) else "RECORD_SAVED",
+        department=data.department,
+        modality=data.modality,
+        model_name=data.model_name,
+        result_summary=f"{data.record_type}: {data.status_level} (Score: {data.risk_score})",
+    )
+    db.add(audit)
     db.commit()
-    return {"message": "Record saved successfully"}
+    db.refresh(record)
+
+    # إشعار موجه للمريض إذا قام الطبيب بحفظ السجل له
+    if current_user.role == "doctor" and target_patient_id != current_user.id:
+        notif = NotificationDB(
+            target_user_id=target_patient_id,
+            title="New Medical Record Added",
+            message=f"Dr. {current_user.full_name} added an AI assessment: {data.record_type} ({data.status_level})",
+            priority="NORMAL",
+        )
+        db.add(notif)
+        db.commit()
+
+        await manager.send_personal(
+            target_patient_id,
+            {
+                "id": notif.id,
+                "title": notif.title,
+                "message": notif.message,
+                "priority": notif.priority,
+                "created_at": notif.created_at.strftime("%Y-%m-%d %H:%M"),
+            },
+        )
+
+    return {"message": "Record saved successfully", "record_id": record.id}
 
 @app.get("/api/medical-records/patient/{patient_id}")
 def get_patient_medical_records(
     patient_id: int,
+    category: Optional[str] = None,
     current_user: UserDB = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -891,34 +1304,54 @@ def get_patient_medical_records(
             detail="Access forbidden: cannot view another patient's medical records",
         )
 
-    records = (
-        db.query(MedicalRecordDB)
-        .filter(MedicalRecordDB.patient_id == patient_id)
-        .order_by(MedicalRecordDB.id.desc())
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "record_type": r.record_type,
-            "risk_score": r.risk_score,
-            "status_level": r.status_level,
-            "details": json.loads(r.details_json) if r.details_json else [],
-            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M"),
-        }
-        for r in records
-    ]
+    # تحقق صارم من علاقة الطبيب السريرية بالمريض
+    if current_user.role == "doctor":
+        has_appointment = (
+            db.query(AppointmentDB)
+            .filter(
+                AppointmentDB.doctor_id == current_user.id,
+                AppointmentDB.patient_id == patient_id,
+            )
+            .first()
+        )
+        has_record = (
+            db.query(MedicalRecordDB)
+            .filter(
+                MedicalRecordDB.doctor_id == current_user.id,
+                MedicalRecordDB.patient_id == patient_id,
+            )
+            .first()
+        )
+        if not has_appointment and not has_record:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access forbidden: You do not have an active clinical relationship with this patient.",
+            )
 
-@app.get("/api/medical-records/all")
-def get_all_medical_records(
-    current_user: UserDB = Depends(require_roles("admin")),
-    db: Session = Depends(get_db),
-):
-    records = db.query(MedicalRecordDB).order_by(MedicalRecordDB.id.desc()).all()
+    query = db.query(MedicalRecordDB).filter(MedicalRecordDB.patient_id == patient_id)
+    if category and category.strip().lower() != "all":
+        query = query.filter(MedicalRecordDB.source_category == category.strip())
+
+    records = query.order_by(MedicalRecordDB.id.desc()).all()
+
+    doctor_ids = {r.doctor_id for r in records if r.doctor_id}
+    doctors_map = {}
+    if doctor_ids:
+        docs = db.query(UserDB).filter(UserDB.id.in_(doctor_ids)).all()
+        doctors_map = {d.id: d.full_name for d in docs}
+
     return [
         {
             "id": r.id,
             "patient_id": r.patient_id,
+            "doctor_id": r.doctor_id,
+            "doctor_name": doctors_map.get(r.doctor_id) if r.doctor_id else None,
+            "department": r.department,
+            "modality": r.modality,
+            "source_category": r.source_category or "AI Analysis",
+            "model_name": r.model_name,
+            "confidence": r.confidence,
+            "image_ref": r.image_ref,
             "record_type": r.record_type,
             "risk_score": r.risk_score,
             "status_level": r.status_level,
@@ -926,6 +1359,77 @@ def get_all_medical_records(
             "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
         }
         for r in records
+    ]
+
+@app.get("/api/medical-records/all")
+def get_all_medical_records(
+    category: Optional[str] = None,
+    current_user: UserDB = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+):
+    query = db.query(MedicalRecordDB)
+    if category and category.strip().lower() != "all":
+        query = query.filter(MedicalRecordDB.source_category == category.strip())
+    records = query.order_by(MedicalRecordDB.id.desc()).all()
+
+    doctor_ids = {r.doctor_id for r in records if r.doctor_id}
+    doctors_map = {}
+    if doctor_ids:
+        docs = db.query(UserDB).filter(UserDB.id.in_(doctor_ids)).all()
+        doctors_map = {d.id: d.full_name for d in docs}
+
+    return [
+        {
+            "id": r.id,
+            "patient_id": r.patient_id,
+            "doctor_id": r.doctor_id,
+            "doctor_name": doctors_map.get(r.doctor_id) if r.doctor_id else None,
+            "department": r.department,
+            "modality": r.modality,
+            "source_category": r.source_category or "AI Analysis",
+            "model_name": r.model_name,
+            "confidence": r.confidence,
+            "image_ref": r.image_ref,
+            "record_type": r.record_type,
+            "risk_score": r.risk_score,
+            "status_level": r.status_level,
+            "details": json.loads(r.details_json) if r.details_json else [],
+            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else None,
+        }
+        for r in records
+    ]
+
+@app.get("/api/audit-logs")
+def get_audit_logs(
+    current_user: UserDB = Depends(require_roles("doctor", "admin")),
+    db: Session = Depends(get_db),
+):
+    query = db.query(AuditLogDB)
+    if current_user.role == "doctor":
+        query = query.filter(AuditLogDB.user_id == current_user.id)
+    logs = query.order_by(AuditLogDB.id.desc()).limit(100).all()
+
+    user_ids = {l.user_id for l in logs if l.user_id} | {l.patient_id for l in logs if l.patient_id}
+    users_map = {}
+    if user_ids:
+        users = db.query(UserDB).filter(UserDB.id.in_(user_ids)).all()
+        users_map = {u.id: u.full_name for u in users}
+
+    return [
+        {
+            "id": l.id,
+            "user_id": l.user_id,
+            "user_name": users_map.get(l.user_id, f"User #{l.user_id}"),
+            "patient_id": l.patient_id,
+            "patient_name": users_map.get(l.patient_id, f"Patient #{l.patient_id}") if l.patient_id else "N/A",
+            "action": l.action,
+            "department": l.department,
+            "modality": l.modality,
+            "model_name": l.model_name,
+            "result_summary": l.result_summary,
+            "created_at": l.created_at.strftime("%Y-%m-%d %H:%M") if l.created_at else None,
+        }
+        for l in logs
     ]
 
 # --- إشعارات المستخدم المخزنة ---

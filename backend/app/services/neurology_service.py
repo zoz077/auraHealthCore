@@ -25,7 +25,8 @@ img_transform_224 = transforms.Compose([
 
 img_transform_256 = transforms.Compose([
     transforms.Resize((256, 256)),
-    transforms.ToTensor()
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
 ])
 
 # تحويل مخصص للباركنسون لمطابقة المعالجة المسبقة في كود التدريب (Colab)
@@ -48,7 +49,10 @@ if HAS_SMP:
         classes=1
     )
 
-tumor_seg_path = os.path.join(MODELS_DIR, "brain_tumor_segmentation_unet.pth")
+# New model has priority; old model preserved as backup
+tumor_seg_path = os.path.join(MODELS_DIR, "brain_tumor_segmentation_unet (1).pth")
+if not os.path.exists(tumor_seg_path):
+    tumor_seg_path = os.path.join(MODELS_DIR, "brain_tumor_segmentation_unet.pth")
 tumor_cls_path = os.path.join(MODELS_DIR, "neuro_imaging_model.pth")
 
 use_unet = False
@@ -83,13 +87,22 @@ def predict_brain_tumor_service(image_bytes: bytes) -> dict:
             total_pixels = mask.numel()
             tumor_ratio = tumor_pixels / total_pixels
             has_tumor = tumor_pixels > 35
-            confidence = round(float(probs.max().item() * 100), 2) if has_tumor else round(float((1.0 - probs.mean().item()) * 100), 2)
+            confidence = round(float(probs[probs > 0.5].mean().item() * 100), 2) if has_tumor else round(float((1.0 - probs.mean().item()) * 100), 2)
             
+        finding_text = "Abnormal lesion detected" if has_tumor else "No segmented lesion detected"
+        
         return {
-            "diagnosis": "Brain Tumor Detected (U-Net Segmentation)" if has_tumor else "No Tumor Detected",
+            "diagnosis": finding_text,
+            "ai_finding": finding_text,
             "has_tumor": has_tumor,
             "tumor_area_percentage": round(tumor_ratio * 100, 2),
-            "confidence": min(max(confidence, 75.0), 99.2)
+            "confidence": min(max(confidence, 70.0), 99.5),
+            "model_evaluation": {
+                "metric_name": "Dice Score",
+                "score": 92.08,
+                "note": "Model evaluation benchmark; not patient-specific confidence"
+            },
+            "clinical_disclaimer": "This AI result represents an image segmentation finding and does not determine tumor type, tumor grade, or clinical severity. Final interpretation requires evaluation by a qualified medical professional."
         }
     
     tensor_img = img_transform_224(image).unsqueeze(0).to(device)
@@ -192,6 +205,49 @@ def predict_eeg_service(signals: list[float]) -> dict:
         "confidence": round(probs[idx].item() * 100, 2)
     }
 
+# 3b. EEG Waveform Image Vision Model (ResNet18)
+eeg_image_model = models.resnet18(weights=None)
+eeg_image_model.fc = nn.Sequential(
+    nn.Linear(eeg_image_model.fc.in_features, 128),
+    nn.ReLU(),
+    nn.Dropout(0.3),
+    nn.Linear(128, 2)
+)
+eeg_image_path = os.path.join(MODELS_DIR, "eeg_image_vision_model.pth")
+is_eeg_image_loaded = False
+if os.path.exists(eeg_image_path):
+    try:
+        eeg_image_model.load_state_dict(torch.load(eeg_image_path, map_location=device))
+        eeg_image_model.to(device).eval()
+        is_eeg_image_loaded = True
+    except Exception as e:
+        print(f"Warning loading EEG Image model: {e}")
+
+EEG_IMAGE_CLASSES = ['normal', 'seizure']
+
+def predict_eeg_image_service(image_bytes: bytes) -> dict:
+    image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    tensor_img = img_transform_224(image).unsqueeze(0).to(device)
+    with torch.no_grad():
+        outputs = eeg_image_model(tensor_img)
+        probs = torch.softmax(outputs, dim=1)[0]
+        idx = torch.argmax(probs).item()
+        confidence = round(probs[idx].item() * 100, 2)
+        has_seizure = (idx == 1)
+    
+    return {
+        "has_seizure": has_seizure,
+        "diagnosis": "Seizure Activity Detected" if has_seizure else "Normal / Healthy EEG Waveform",
+        "confidence": confidence,
+        "risk_level": "HIGH" if has_seizure else "LOW",
+        "status_code": 200,
+        "probabilities": {
+            "Normal Waveform": round(probs[0].item() * 100, 2),
+            "Seizure Waveform": round(probs[1].item() * 100, 2)
+        }
+    }
+
+
 # ==========================================
 # 4. Vision Exam Model
 # ==========================================
@@ -240,7 +296,66 @@ def predict_vision_service(features: list[float]) -> dict:
         "confidence": round(probs[idx].item() * 100, 2)
     }
 
+# 4b. Facial Paralysis & Asymmetry Vision Model (MobileNetV3 Large)
+paralysis_model = models.mobilenet_v3_large(weights=None)
+paralysis_model.classifier = nn.Sequential(
+    nn.Linear(paralysis_model.classifier[0].in_features, 256),
+    nn.Hardswish(),
+    nn.Dropout(0.3),
+    nn.Linear(256, 2)
+)
+paralysis_path = os.path.join(MODELS_DIR, "paralysis_vision_model.pth")
+is_paralysis_loaded = False
+if os.path.exists(paralysis_path):
+    try:
+        paralysis_model.load_state_dict(torch.load(paralysis_path, map_location=device))
+        paralysis_model.to(device).eval()
+        is_paralysis_loaded = True
+    except Exception as e:
+        print(f"Warning loading Facial Paralysis model: {e}")
+
+PARALYSIS_CLASSES = ['Normal / Non-Asymmetry', 'Facial Asymmetry / Paralysis Pattern']
+
 def predict_vision_file_service(file_bytes: bytes) -> dict:
+    # 1. Attempt image ingestion for Facial Paralysis / Asymmetry screening
+    try:
+        image = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+        if is_paralysis_loaded:
+            tensor_img = img_transform_224(image).unsqueeze(0).to(device)
+            with torch.no_grad():
+                outputs = paralysis_model(tensor_img)
+                probs = torch.softmax(outputs, dim=1)[0]
+                idx = torch.argmax(probs).item()
+                conf = round(probs[idx].item() * 100, 2)
+                has_asymmetry = (idx == 1)
+            
+            if has_asymmetry:
+                finding = "Facial Asymmetry / Paralysis Pattern Detected"
+                note = "Facial asymmetry was detected in the uploaded image. This finding may have multiple possible causes, including neurological or non-neurological conditions. This AI result does not confirm stroke or determine the underlying cause."
+                zone = "Lower Face Zone"
+            else:
+                finding = "No Significant Facial Asymmetry Detected"
+                note = "No significant facial asymmetry pattern was detected in the screening evaluation."
+                zone = None
+                
+            return {
+                "diagnosis": finding,
+                "ai_finding": finding,
+                "confidence": conf,
+                "has_asymmetry": has_asymmetry,
+                "affected_zone": zone,
+                "clinical_note": note,
+                "clinical_disclaimer": "AI screening result only - not a definitive diagnosis. This AI result does not confirm stroke or determine the underlying cause.",
+                "probabilities": {
+                    "Normal / Non-Asymmetry": round(probs[0].item() * 100, 2),
+                    "Facial Asymmetry / Paralysis Pattern": round(probs[1].item() * 100, 2)
+                }
+            }
+    except Exception:
+        # Not a valid image file, fall through to text/JSON metric parser
+        pass
+
+    # 2. Text / JSON metric parsing for Vision Exam tabular features
     try:
         content = file_bytes.decode('utf-8', errors='ignore')
         try:
@@ -337,6 +452,7 @@ def predict_parkinson_file_service(file_bytes: bytes) -> dict:
 # ==========================================
 # 6. Spine Model
 # ==========================================
+# Legacy validated binary model (ResNet18, 1 output)
 spine_model = models.resnet18(weights=None)
 spine_model.fc = nn.Linear(spine_model.fc.in_features, 1)
 spine_path = os.path.join(MODELS_DIR, "spine_neuropathy_model.pth")
@@ -347,20 +463,65 @@ if os.path.exists(spine_path):
         spine_model.load_state_dict(torch.load(spine_path, map_location=device))
         spine_model.to(device).eval()
     except Exception as e:
-        print(f"Warning loading Spine model: {e}")
+        print(f"Warning loading Spine ResNet model: {e}")
 
-SPINE_CLASSES = ['Normal Spine', 'Spinal Pathology Detected']
+# New DenseNet121 Spine Neuropathy architecture (matches spine_neuropathy_model (1).pth)
+spine_densenet_model = models.densenet121(weights=None)
+spine_densenet_model.classifier = nn.Sequential(
+    nn.Linear(spine_densenet_model.classifier.in_features, 256),
+    nn.ReLU(),
+    nn.Dropout(0.3),
+    nn.Linear(256, 3)
+)
+spine_new_path = os.path.join(MODELS_DIR, "spine_neuropathy_model (1).pth")
+is_spine_densenet_loaded = False
+if os.path.exists(spine_new_path):
+    try:
+        spine_densenet_model.load_state_dict(torch.load(spine_new_path, map_location=device))
+        spine_densenet_model.to(device).eval()
+        is_spine_densenet_loaded = True
+    except Exception as e:
+        print(f"Warning loading Spine DenseNet model: {e}")
+
+SPINE_CLASSES = ['Herniated Disc', 'No Stenosis', 'Thecal Sac']
 
 def predict_spine_service(image_bytes: bytes) -> dict:
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     tensor_img = img_transform_224(image).unsqueeze(0).to(device)
+    
+    if is_spine_densenet_loaded and spine_densenet_model is not None:
+        with torch.no_grad():
+            output = spine_densenet_model(tensor_img)
+            probs = torch.softmax(output, dim=1)[0]
+            idx = torch.argmax(probs).item()
+            conf = round(probs[idx].item() * 100, 2)
+            is_pathology = bool(idx != 1)  # Index 1 = 'No Stenosis'; Index 0 and 2 are pathologies
+            
+        return {
+            "diagnosis": SPINE_CLASSES[idx],
+            "ai_finding": SPINE_CLASSES[idx],
+            "confidence": conf,
+            "is_pathology": is_pathology,
+            "probability": conf,
+            "probabilities": {
+                SPINE_CLASSES[i]: round(probs[i].item() * 100, 2) for i in range(3)
+            },
+            "model_evaluation": {
+                "validation_accuracy": 96.11,
+                "train_accuracy": 99.96,
+                "note": "Model evaluation benchmark; not patient-specific confidence"
+            },
+            "clinical_disclaimer": "AI screening result only - not a definitive diagnosis. Final clinical interpretation requires review by a qualified radiologist or spine specialist."
+        }
+    
+    # Fallback to legacy ResNet18 model if DenseNet121 is unavailable
     with torch.no_grad():
         output = spine_model(tensor_img)
         prob = torch.sigmoid(output).item()
         is_pathology = prob > 0.5
         confidence = prob if is_pathology else (1.0 - prob)
     return {
-        "diagnosis": SPINE_CLASSES[1 if is_pathology else 0],
+        "diagnosis": "Spinal Pathology Detected" if is_pathology else "Normal Spine",
         "confidence": round(confidence * 100, 2),
         "probability": round(prob * 100, 2)
     }

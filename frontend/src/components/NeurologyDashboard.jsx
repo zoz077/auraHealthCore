@@ -1,18 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { Bone, Brain, Activity, Eye, ActivitySquare, Disc, Camera, Video, UploadCloud, Save, ShieldCheck, Sliders } from 'lucide-react';
+import { Bone, Brain, Activity, Eye, ActivitySquare, Disc, Camera, Video, UploadCloud, Save, ShieldCheck, Sliders, Sparkles } from 'lucide-react';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
 import { FormField } from './ui/Input';
 import EmptyState from './ui/EmptyState';
+import WorkstationPatientSelector from './WorkstationPatientSelector';
+import { sendFindingToGeneralMedicine } from '../utils/generalMedicineIntegration';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-export default function NeurologyDashboard({ currentUser }) {
+export default function NeurologyDashboard({ currentUser, activeGmSessionUuid, setActiveGmSessionUuid, onNavigateToTab }) {
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const [activeSubTab, setActiveSubTab] = useState('tumor');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [lastSavedRecordId, setLastSavedRecordId] = useState(null);
+  const [lastSavedPatientId, setLastSavedPatientId] = useState(null);
+  const [isSendingGm, setIsSendingGm] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
@@ -57,6 +63,8 @@ export default function NeurologyDashboard({ currentUser }) {
     setResult(null);
     setSelectedFile(null);
     setPreviewUrl(null);
+    setLastSavedRecordId(null);
+    setLastSavedPatientId(null);
   };
 
   const handleFileUploadAndAnalyze = async (endpoint) => {
@@ -144,6 +152,15 @@ export default function NeurologyDashboard({ currentUser }) {
 
   const handleSaveToEHR = async () => {
     if (!result || !currentUser) return;
+    const targetPatientId = (currentUser?.role === 'doctor' || currentUser?.role === 'admin')
+      ? selectedPatient?.id
+      : currentUser?.id;
+
+    if (!targetPatientId) {
+      alert('Please select an attending clinic patient before saving this AI diagnostic evaluation.');
+      return;
+    }
+
     try {
       const detailsList = [
         `Primary Finding: ${result.diagnosis}`,
@@ -159,16 +176,45 @@ export default function NeurologyDashboard({ currentUser }) {
         detailsList.push(`Differential Classes: ${topClasses}`);
       }
 
-      await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
-        patient_id: currentUser.id,
+      const modality = activeSubTab === 'spine' ? 'MRI' : activeSubTab === 'tumor' ? 'MRI' : activeSubTab === 'eeg' ? 'EEG' : 'Clinical Exam';
+      const modelName = activeSubTab === 'spine' ? 'DenseNet121 Spine MRI' : activeSubTab === 'tumor' ? 'ResNet50 Brain Tumor' : 'Neurology AI Core';
+
+      const saveRes = await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
+        patient_id: targetPatientId,
         record_type: `Neurology AI (${activeSubTab.toUpperCase()})`,
         risk_score: parseFloat(result.confidence) || 0,
         status_level: Number(result.confidence) > 50 ? 'HIGH' : 'NORMAL',
+        department: 'Neurology & Brain',
+        modality: modality,
+        source_category: 'AI Analysis',
+        model_name: modelName,
+        confidence: parseFloat(result.confidence) || null,
         details: detailsList
       });
-      alert('Neurology evaluation successfully saved to patient EHR!');
+      const savedId = saveRes.data?.record_id;
+      setLastSavedRecordId(savedId);
+      setLastSavedPatientId(targetPatientId);
+      alert(`Neurology evaluation successfully saved to patient EHR (Patient #${targetPatientId})!`);
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to save record to EHR.');
+    }
+  };
+
+  const handleSendToGm = async () => {
+    if (!lastSavedRecordId || !lastSavedPatientId) return;
+    setIsSendingGm(true);
+    try {
+      await sendFindingToGeneralMedicine({
+        patientId: lastSavedPatientId,
+        recordId: lastSavedRecordId,
+        activeGmSessionUuid,
+        setActiveGmSessionUuid,
+        onNavigateToTab
+      });
+    } catch (err) {
+      alert(err.message || 'Failed to send finding to General Medicine.');
+    } finally {
+      setIsSendingGm(false);
     }
   };
 
@@ -183,6 +229,13 @@ export default function NeurologyDashboard({ currentUser }) {
 
   return (
     <div className="space-y-6">
+      {/* Patient Selector for Clinical Doctors */}
+      <WorkstationPatientSelector
+        currentUser={currentUser}
+        selectedPatient={selectedPatient}
+        onSelectPatient={setSelectedPatient}
+      />
+
       {/* Module Sub-navigation */}
       <div className="flex flex-wrap gap-2 p-1.5 bg-[#f0f4f8] rounded-2xl border border-white/90 shadow-neu-sm">
         {subtabs.map((tab) => {
@@ -473,14 +526,27 @@ export default function NeurologyDashboard({ currentUser }) {
               )}
 
               {currentUser && (
-                <Button
-                  onClick={handleSaveToEHR}
-                  variant="secondary"
-                  icon={Save}
-                  className="w-full"
-                >
-                  Save Neurological Assessment to Patient EHR
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={handleSaveToEHR}
+                    variant="secondary"
+                    icon={Save}
+                    className="w-full"
+                  >
+                    Save Neurological Assessment to Patient EHR
+                  </Button>
+                  {lastSavedRecordId && (
+                    <Button
+                      onClick={handleSendToGm}
+                      variant="primary"
+                      icon={Sparkles}
+                      className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                      disabled={isSendingGm}
+                    >
+                      {isSendingGm ? 'Ingesting Finding...' : 'Send Finding to General Medicine Hub'}
+                    </Button>
+                  )}
+                </div>
               )}
             </CardContent>
           )}

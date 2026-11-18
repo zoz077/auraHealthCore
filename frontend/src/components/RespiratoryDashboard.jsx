@@ -10,17 +10,24 @@ import {
   Upload, 
   CheckCircle2, 
   Volume2,
-  Cpu
+  Cpu,
+  Sparkles
 } from 'lucide-react';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
 import { FormField, Input } from './ui/Input';
 import EmptyState from './ui/EmptyState';
+import WorkstationPatientSelector from './WorkstationPatientSelector';
+import { sendFindingToGeneralMedicine } from '../utils/generalMedicineIntegration';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-export default function RespiratoryDashboard({ currentUser }) {
+export default function RespiratoryDashboard({ currentUser, activeGmSessionUuid, setActiveGmSessionUuid, onNavigateToTab }) {
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [lastSavedRecordId, setLastSavedRecordId] = useState(null);
+  const [lastSavedPatientId, setLastSavedPatientId] = useState(null);
+  const [isSendingGm, setIsSendingGm] = useState(false);
   // Active test mode: 'ct' | 'xray' | 'ultrasound' | 'sounds' | 'vitals'
   const [testType, setTestType] = useState('ct');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -84,22 +91,59 @@ export default function RespiratoryDashboard({ currentUser }) {
   const handleSaveRecord = async () => {
     if (!result || !currentUser) return;
 
+    const targetPatientId = (currentUser?.role === 'doctor' || currentUser?.role === 'admin')
+      ? selectedPatient?.id
+      : currentUser?.id;
+
+    if (!targetPatientId) {
+      alert('Please select an attending clinic patient before saving this AI diagnostic evaluation.');
+      return;
+    }
+
     const detailsList = typeof result.details === 'object' && !Array.isArray(result.details)
       ? Object.entries(result.details).map(([k, v]) => `${k}: ${v}`)
       : result.details || [result.diagnosis];
 
+    const modality = testType === 'ct' ? 'CT-Scan' : testType === 'xray' ? 'Chest X-Ray' : testType === 'ultrasound' ? 'Ultrasound' : testType === 'sounds' ? 'Lung Auscultation' : 'Vital Signs';
+    const modelName = testType === 'xray' ? 'lung_xray_effnetv2' : testType === 'ultrasound' ? 'lung_ultrasound_convnext' : testType === 'ct' ? 'lung_ctscan_densenet' : testType === 'sounds' ? 'lung_audio_multi_disease' : 'vital_signs_xgboost';
+
     try {
-      await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
-        patient_id: currentUser.id,
+      const saveRes = await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
+        patient_id: targetPatientId,
         record_type: `Respiratory AI (${testType.toUpperCase()})`,
         risk_score: parseFloat(result.confidence) || 85,
         status_level: result.risk_level || 'HIGH',
+        department: 'Pulmonology',
+        modality: modality,
+        source_category: 'AI Analysis',
+        model_name: modelName,
+        confidence: parseFloat(result.confidence) || null,
         details: detailsList
       });
-      setSaveStatus('Record successfully saved to patient EHR!');
+      setLastSavedRecordId(saveRes.data?.record_id);
+      setLastSavedPatientId(targetPatientId);
+      setSaveStatus(`Record successfully saved to patient EHR (Patient #${targetPatientId})!`);
     } catch (err) {
       console.error("Save Error:", err);
       setSaveStatus('Failed to save record to EHR system.');
+    }
+  };
+
+  const handleSendToGm = async () => {
+    if (!lastSavedRecordId || !lastSavedPatientId) return;
+    setIsSendingGm(true);
+    try {
+      await sendFindingToGeneralMedicine({
+        patientId: lastSavedPatientId,
+        recordId: lastSavedRecordId,
+        activeGmSessionUuid,
+        setActiveGmSessionUuid,
+        onNavigateToTab
+      });
+    } catch (err) {
+      alert(err.message || 'Failed to send finding to General Medicine.');
+    } finally {
+      setIsSendingGm(false);
     }
   };
 
@@ -113,6 +157,13 @@ export default function RespiratoryDashboard({ currentUser }) {
 
   return (
     <div className="space-y-6">
+      {/* Patient Selector for Clinical Doctors */}
+      <WorkstationPatientSelector
+        currentUser={currentUser}
+        selectedPatient={selectedPatient}
+        onSelectPatient={setSelectedPatient}
+      />
+
       {/* Modality Selector Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
         {modalities.map((m) => {
@@ -312,6 +363,17 @@ export default function RespiratoryDashboard({ currentUser }) {
                   >
                     {saveStatus || 'Save Evaluation to Patient EHR'}
                   </Button>
+                  {lastSavedRecordId && (
+                    <Button
+                      onClick={handleSendToGm}
+                      variant="primary"
+                      icon={Sparkles}
+                      className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                      disabled={isSendingGm}
+                    >
+                      {isSendingGm ? 'Ingesting Finding...' : 'Send Finding to General Medicine Hub'}
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>

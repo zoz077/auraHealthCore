@@ -6,6 +6,7 @@ from app.services.neurology_service import (
     predict_brain_tumor_service,
     predict_alzheimer_service,
     predict_eeg_service,
+    predict_eeg_image_service,
     predict_vision_service,
     predict_vision_file_service,
     predict_parkinson_file_service,
@@ -39,6 +40,14 @@ def analyze_eeg(data: EEGDataInput):
     if len(data.signals) != 178:
         raise HTTPException(status_code=400, detail="EEG classification requires exactly 178 signal points.")
     return predict_eeg_service(data.signals)
+
+@router.post("/eeg-image")
+async def analyze_eeg_image(file: UploadFile = File(...)):
+    if file.content_type and not (file.content_type.startswith("image/") or file.content_type == "application/octet-stream"):
+        raise HTTPException(status_code=400, detail="Uploaded file must be a valid image format.")
+    contents = await file.read()
+    return predict_eeg_image_service(contents)
+
 
 @router.post("/vision-exam")
 def analyze_vision_exam(data: VisionMetricsInput):

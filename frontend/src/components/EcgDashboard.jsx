@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Heart, Activity, Upload, CheckCircle2, FileText, Sliders, Image as ImageIcon, User, AlertCircle, Cpu, ShieldCheck } from 'lucide-react';
+import { Heart, Activity, Upload, CheckCircle2, FileText, Sliders, Image as ImageIcon, User, AlertCircle, Cpu, ShieldCheck, Sparkles } from 'lucide-react';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
 import { FormField, Input, Select } from './ui/Input';
+import WorkstationPatientSelector from './WorkstationPatientSelector';
+import { sendFindingToGeneralMedicine } from '../utils/generalMedicineIntegration';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-export default function EcgDashboard({ currentUser }) {
+export default function EcgDashboard({ currentUser, activeGmSessionUuid, setActiveGmSessionUuid, onNavigateToTab }) {
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [lastSavedRecordId, setLastSavedRecordId] = useState(null);
+  const [lastSavedPatientId, setLastSavedPatientId] = useState(null);
+  const [isSendingGm, setIsSendingGm] = useState(false);
   // Mode switcher: 'values' or 'image'
   const [analysisMode, setAnalysisMode] = useState('values');
 
@@ -171,23 +177,63 @@ export default function EcgDashboard({ currentUser }) {
   };
 
   const handleSaveToEHR = async () => {
+    const targetPatientId = (currentUser?.role === 'doctor' || currentUser?.role === 'admin')
+      ? selectedPatient?.id
+      : currentUser?.id;
+
+    if (!targetPatientId) {
+      alert('Please select an attending clinic patient before saving this AI diagnostic evaluation.');
+      return;
+    }
+
     try {
-      await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
-        patient_name: clinicalParams.patientName || 'Anonymous Patient',
-        patient_id: currentUser?.id,
+      const saveRes = await axios.post(`${API_BASE_URL}/api/medical-records/save`, {
+        patient_id: targetPatientId,
         record_type: `ECG Diagnostic (${analysisMode === 'values' ? 'Detailed Values' : 'Waveform Image Vision'})`,
         risk_score: diagnosisResult.score,
         status_level: diagnosisResult.status,
+        department: 'Cardiology',
+        modality: 'ECG',
+        source_category: 'AI Analysis',
+        model_name: 'ECG Rhythm Classifier',
+        confidence: diagnosisResult.score,
         details: diagnosisResult.details
       });
-      alert(`Report for ${clinicalParams.patientName || 'Patient'} saved to EHR system!`);
+      setLastSavedRecordId(saveRes.data?.record_id);
+      setLastSavedPatientId(targetPatientId);
+      alert(`Report saved to EHR system for Patient #${targetPatientId}!`);
     } catch (err) {
       alert(err.response?.data?.detail || 'Failed to save report to EHR system.');
     }
   };
 
+  const handleSendToGm = async () => {
+    if (!lastSavedRecordId || !lastSavedPatientId) return;
+    setIsSendingGm(true);
+    try {
+      await sendFindingToGeneralMedicine({
+        patientId: lastSavedPatientId,
+        recordId: lastSavedRecordId,
+        activeGmSessionUuid,
+        setActiveGmSessionUuid,
+        onNavigateToTab
+      });
+    } catch (err) {
+      alert(err.message || 'Failed to send finding to General Medicine.');
+    } finally {
+      setIsSendingGm(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Patient Selector for Clinical Doctors */}
+      <WorkstationPatientSelector
+        currentUser={currentUser}
+        selectedPatient={selectedPatient}
+        onSelectPatient={setSelectedPatient}
+      />
+
       {/* Top Mode Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-200/80 shadow-card">
         <div className="flex items-center gap-2.5 px-2">
@@ -422,14 +468,27 @@ export default function EcgDashboard({ currentUser }) {
             </div>
 
             {currentUser && (
-              <Button
-                onClick={handleSaveToEHR}
-                variant="secondary"
-                icon={FileText}
-                className="w-full"
-              >
-                Save Evaluation Report to Patient EHR
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  onClick={handleSaveToEHR}
+                  variant="secondary"
+                  icon={FileText}
+                  className="w-full"
+                >
+                  Save Evaluation Report to Patient EHR
+                </Button>
+                {lastSavedRecordId && (
+                  <Button
+                    onClick={handleSendToGm}
+                    variant="primary"
+                    icon={Sparkles}
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                    disabled={isSendingGm}
+                  >
+                    {isSendingGm ? 'Ingesting Finding...' : 'Send Finding to General Medicine Hub'}
+                  </Button>
+                )}
+              </div>
             )}
           </CardContent>
         </Card>

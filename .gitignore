@@ -2,6 +2,12 @@
 .venv/
 venv/
 ENV/
+env/
+
+# Environment Variables & Secrets
+.env
+.env.*
+backend/.env
 
 # Node Modules & Build
 node_modules/
@@ -14,14 +20,27 @@ __pycache__/
 *.py[cod]
 *.class
 
-# Large Model weights
+# Database
+*.db
+*.sqlite
+*.sqlite3
+backend/app/aura_health.db
+
+# Large Model weights & Deep Learning checkpoints (> 25MB - Host on HuggingFace / Drive)
 *.pth
 *.pt
 *.pkl
 *.joblib
 *.npz
+*.keras
+*.h5
+*.onnx
+backend/app/models/*.keras
+backend/app/models/*.pth
+backend/app/models/*.pt
 
-# Temp uploads & logs
+# Temp uploads & logs & scratch
 temp_uploads/
 backend/temp_uploads/
 *.log
+backend/scripts/_*.py

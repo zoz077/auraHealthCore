@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { HeartPulse, Activity, ShieldCheck, CheckCircle2, User } from 'lucide-react';
+import { HeartPulse, Activity, ShieldCheck, CheckCircle2, User, Sparkles } from 'lucide-react';
 import Button from './ui/Button';
 import Badge from './ui/Badge';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './ui/Card';
 import { FormField, Input } from './ui/Input';
 import EmptyState from './ui/EmptyState';
+import WorkstationPatientSelector from './WorkstationPatientSelector';
+import { sendFindingToGeneralMedicine } from '../utils/generalMedicineIntegration';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
-export default function IcuDashboard({ currentUser }) {
+export default function IcuDashboard({ currentUser, activeGmSessionUuid, setActiveGmSessionUuid, onNavigateToTab }) {
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [lastSavedRecordId, setLastSavedRecordId] = useState(null);
+  const [lastSavedPatientId, setLastSavedPatientId] = useState(null);
+  const [isSendingGm, setIsSendingGm] = useState(false);
   const [formData, setFormData] = useState({
     patient_name: currentUser?.role === 'patient' ? currentUser?.full_name : '',
     patient_id: 'ICU-2026-01',
@@ -25,14 +31,25 @@ export default function IcuDashboard({ currentUser }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.patient_name.trim()) return alert('Please enter patient name');
+    const targetPatientId = (currentUser?.role === 'doctor' || currentUser?.role === 'admin')
+      ? selectedPatient?.id
+      : currentUser?.id;
+
+    const patientName = selectedPatient ? selectedPatient.full_name : formData.patient_name;
+    if (!patientName.trim()) return alert('Please enter or select a patient name');
+
     setLoading(true);
     try {
       const res = await axios.post(`${API_BASE_URL}/api/icu/analyze`, {
         ...formData,
-        db_patient_id: currentUser?.role === 'patient' ? currentUser?.id : null
+        patient_name: patientName,
+        db_patient_id: targetPatientId
       });
       setResult(res.data.assessment);
+      if (res.data.record_id) {
+        setLastSavedRecordId(res.data.record_id);
+        setLastSavedPatientId(targetPatientId);
+      }
     } catch (err) {
       alert(err.response?.data?.detail || 'ICU risk analysis failed.');
     } finally {
@@ -40,9 +57,43 @@ export default function IcuDashboard({ currentUser }) {
     }
   };
 
+  const handleSendToGm = async () => {
+    if (!lastSavedRecordId || !lastSavedPatientId) return;
+    setIsSendingGm(true);
+    try {
+      await sendFindingToGeneralMedicine({
+        patientId: lastSavedPatientId,
+        recordId: lastSavedRecordId,
+        activeGmSessionUuid,
+        setActiveGmSessionUuid,
+        onNavigateToTab
+      });
+    } catch (err) {
+      alert(err.message || 'Failed to send finding to General Medicine.');
+    } finally {
+      setIsSendingGm(false);
+    }
+  };
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      {/* Parameter Input Console */}
+    <div className="space-y-6">
+      <WorkstationPatientSelector
+        currentUser={currentUser}
+        selectedPatient={selectedPatient}
+        onSelectPatient={(p) => {
+          setSelectedPatient(p);
+          if (p) {
+            setFormData(prev => ({
+              ...prev,
+              patient_name: p.full_name,
+              patient_id: `PAT-${p.id.toString().padStart(4, '0')}`
+            }));
+          }
+        }}
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Parameter Input Console */}
       <Card className="lg:col-span-5">
         <CardHeader>
           <div>
@@ -185,9 +236,24 @@ export default function IcuDashboard({ currentUser }) {
                 ))}
               </div>
             </div>
+
+            {lastSavedRecordId && (
+              <div className="pt-3">
+                <Button
+                  onClick={handleSendToGm}
+                  variant="primary"
+                  icon={Sparkles}
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                  disabled={isSendingGm}
+                >
+                  {isSendingGm ? 'Ingesting Finding...' : 'Send ICU Assessment to General Medicine Hub'}
+                </Button>
+              </div>
+            )}
           </CardContent>
         )}
       </Card>
+      </div>
     </div>
   );
 }
